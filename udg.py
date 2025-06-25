@@ -160,4 +160,4 @@ if __name__ == "__main__":
     g.add_edge(0,1)
     g.add_edge(1,2)
     g.add_edge(0,2)
-    print("Triangle is UDG:", udg_recognition(g))
+    print("Graph is UDG:", udg_recognition(g))
