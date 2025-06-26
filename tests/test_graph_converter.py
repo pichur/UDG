@@ -4,7 +4,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 import glob
 import unittest
 import networkx as nx
-from graph_converter import Graph6Converter
+from Graph6Converter import Graph6Converter
 
 
 class TestGraph6Converter(unittest.TestCase):
