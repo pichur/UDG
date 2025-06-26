@@ -5,6 +5,7 @@ import glob
 import unittest
 import networkx as nx
 from Graph6Converter import Graph6Converter
+import subprocess
 
 
 class TestGraph6Converter(unittest.TestCase):
@@ -32,6 +33,20 @@ class TestGraph6Converter(unittest.TestCase):
                     G1 = nx.from_graph6_bytes(g6.encode())
                     G2 = nx.from_graph6_bytes(g6_again.encode())
                     self.assertTrue(nx.is_isomorphic(G1, G2))
+
+    def test_cli_to_graph6(self):
+        text = "3: 1,2 ; 2,3"
+        expected = self.conv.edge_list_to_graph6(text, canonical=False)
+        script = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'Graph6Converter.py')
+        res = subprocess.run([sys.executable, script, '-g', text], capture_output=True, text=True)
+        self.assertEqual(res.stdout.strip(), expected)
+
+    def test_cli_to_edge_list_canonical(self):
+        g6 = self.conv.edge_list_to_graph6("4: 1,2 ; 2,3 ; 3,4")
+        script = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'Graph6Converter.py')
+        res = subprocess.run([sys.executable, script, '-e', '-c', g6], capture_output=True, text=True)
+        expected = self.conv.graph6_to_edge_list(self.conv.canonicalize_graph6(g6))
+        self.assertEqual(res.stdout.strip(), expected)
 
 if __name__ == '__main__':
     unittest.main()
