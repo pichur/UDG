@@ -2,11 +2,25 @@
 
 from math import sqrt
 from collections import deque
+import networkx as nx
 
 class Graph:
-    def __init__(self, n):
-        self.n = n
-        self.adj = [[] for _ in range(n)]
+    """Simple adjacency list graph that can be built from an integer number
+    of vertices or from a :class:`networkx.Graph` instance."""
+
+    def __init__(self, n_or_g):
+        if isinstance(n_or_g, int):
+            n = n_or_g
+            self.n = n
+            self.adj = [[] for _ in range(n)]
+        elif isinstance(n_or_g, nx.Graph):
+            mapping = {node: idx for idx, node in enumerate(sorted(n_or_g.nodes()))}
+            self.n = len(mapping)
+            self.adj = [[] for _ in range(self.n)]
+            for u, v in n_or_g.edges():
+                self.add_edge(mapping[u], mapping[v])
+        else:
+            raise TypeError("Graph() expects an int or a networkx.Graph")
 
     def add_edge(self, u, v):
         if v not in self.adj[u]:
