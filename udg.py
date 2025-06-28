@@ -157,10 +157,11 @@ def has_discrete_realization(graph: Graph, eps: float):
     return result
 
 
-def udg_recognition(graph: Graph, initial_epsilon=0.7):
+def udg_recognition(graph: Graph, initial_epsilon=0.7, eps_min=1e-3, verbose=False):
     eps = initial_epsilon
-    eps_min = 1e-3
     while True:
+        if verbose:
+            print(f"Checking epsilon: {eps}")
         result = has_discrete_realization(graph, eps)
         if result == YES:
             return True
