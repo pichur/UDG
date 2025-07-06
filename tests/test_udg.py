@@ -1,6 +1,6 @@
 import sys, os; sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 import unittest
-from udg import Graph, udg_recognition
+from udg import Graph
 from Graph6Converter import Graph6Converter
 
 class TestUDG(unittest.TestCase):
@@ -35,7 +35,7 @@ class TestUDG(unittest.TestCase):
             print(f"Testing non-UDG graph: {graph}")
             nxg = Graph6Converter._parse_edge_list(graph)
             g = Graph(nxg)
-            self.assertEqual(expected, udg_recognition(g), graph)
+            self.assertEqual(expected, g.udg_recognition(), graph)
 
 if __name__ == '__main__':
     unittest.main()

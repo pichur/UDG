@@ -8,7 +8,7 @@ class Graph6Converter:
     """Convert between custom edge-list format and canonical graph6."""
 
     @staticmethod
-    def _parse_edge_list(text: str) -> nx.Graph:
+    def parse_edge_list(text: str) -> nx.Graph:
         """Parse edge-list formatted as 'n: u,v ; x,y ...'."""
         text = text.strip()
         if not text:
@@ -35,14 +35,14 @@ class Graph6Converter:
         return G
 
     @staticmethod
-    def _graph_to_edge_list(G: nx.Graph) -> str:
+    def graph_to_edge_list(G: nx.Graph) -> str:
         n = len(G)
         edges = sorted({tuple(sorted((u + 1, v + 1))) for u, v in G.edges()})
         edges_str = " ; ".join(f"{u},{v}" for u, v in edges)
         return f"{n}: {edges_str}" if edges_str else f"{n}:"
 
     @staticmethod
-    def _canonical_graph6(G: nx.Graph) -> str:
+    def canonical_graph6(G: nx.Graph) -> str:
         nodes = list(G.nodes())
         best = None
         for perm in itertools.permutations(nodes):
