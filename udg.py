@@ -95,6 +95,56 @@ class Graph:
                 d = sqrt(d_squared)
                 print(f"  {edisp} dist({i},{j}) = {comp} {d:.3f}")
 
+    def draw(self, draw_disks: bool = False, ax=None):
+        """Visualize the graph using stored vertex coordinates.
+
+        Parameters
+        ----------
+        draw_disks : bool, optional
+            If ``True`` draw a circle of radius ``self.unit`` around every
+            vertex to visualise the unit disk.  Defaults to ``False``.
+        ax : :class:`matplotlib.axes.Axes`, optional
+            Existing axes to draw on.  When ``None`` a new figure and axes
+            are created.
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            The axes object the graph was drawn on.
+        """
+        import matplotlib.pyplot as plt
+
+        if ax is None:
+            _, ax = plt.subplots()
+
+        # draw edges
+        for u in range(self.n):
+            for v in self.adj[u]:
+                if u < v:  # avoid drawing twice
+                    x_values = [self.vertices[u].x, self.vertices[v].x]
+                    y_values = [self.vertices[u].y, self.vertices[v].y]
+                    ax.plot(x_values, y_values, color="black", zorder=1)
+
+        # draw vertices
+        xs = [self.vertices[i].x for i in range(self.n)]
+        ys = [self.vertices[i].y for i in range(self.n)]
+        ax.scatter(xs, ys, color="red", zorder=2)
+
+        if draw_disks:
+            for i in range(self.n):
+                circle = plt.Circle(
+                    (self.vertices[i].x, self.vertices[i].y),
+                    self.unit,
+                    color="blue",
+                    fill=False,
+                    linestyle="--",
+                    zorder=0,
+                )
+                ax.add_patch(circle)
+
+        ax.set_aspect("equal", adjustable="datalim")
+        return ax
+
 #     def udg_recognition(self, initial_epsilon=0.7):
 #         self.start_time = time.time()
 #         self.last_verbose_time = self.start_time
