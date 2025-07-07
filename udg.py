@@ -5,7 +5,7 @@ from collections import deque
 import networkx as nx
 import argparse
 import time
-from Graph6Converter import Graph6Converter
+import Graph6Converter
 import numpy as np
 
 class Graph:
@@ -310,9 +310,9 @@ def main() -> None:
         tests(args.verbose)
         return
     elif args.graph6:
-        g = Graph(Graph6Converter.parse_graph6(args.graph))
+        g = Graph(Graph6Converter.g6_to_graph(args.graph))
     elif args.edge_list:
-        g = Graph(Graph6Converter.parse_edge_list(args.graph))
+        g = Graph(Graph6Converter.edge_list_to_graph(args.graph))
 
     output = g.set_verbose(args.verbose).udg_recognition()
     print("Graph is " + ("" if output else "NOT ") + "a Unit Disk Graph (UDG).")
