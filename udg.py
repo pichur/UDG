@@ -14,9 +14,8 @@ class Graph:
 
     def __init__(self, n_or_g):
         if isinstance(n_or_g, int):
-            n = n_or_g
-            self.n = n
-            self.adj = [[] for _ in range(n)]
+            self.n = n_or_g
+            self.adj = [[] for _ in range(self.n)]
         elif isinstance(n_or_g, nx.Graph):
             mapping = {node: idx for idx, node in enumerate(sorted(n_or_g.nodes()))}
             self.n = len(mapping)
@@ -29,9 +28,10 @@ class Graph:
         self.verbose = False
 
         # store vertex coordinates and additional parameters
-        v = np.recarray(shape = n, dtype= [('x', 'int64'),('y', 'int64')])
+        self.vertices = np.recarray(shape = self.n, dtype= [('x', 'int64'),('y', 'int64')])
+
+        self.set_unit(1)
         
-        self.unit = 1
 
         # By theory the eps_min is 1/(2**(2**O(n)))
         ##self.eps_min = 1/(2**(2**self.n))
@@ -62,16 +62,38 @@ class Graph:
     
     def set_coordinate(self, v: int, x: int, y: int):
         """Set coordinates for vertex ``v``."""
-        self.v[v].x = x
-        self.v[v].y = y
+        self.vertices[v].x = x
+        self.vertices[v].y = y
         return self
 
     def set_unit(self, unit: int):
         """Set the unit disk radius for the graph."""
         self.unit = unit
+        self.unit_squared = self.unit * self.unit
         #if hasattr(self, "eps"):
         #    self.apply_granularity()
         return self
+    
+    def vertex_distance_squared(self, u: int, v: int) -> int:
+        """Return squared Euclidean distance between vertices ``u`` and ``v``."""
+        dx = self.vertices[u].x - self.vertices[v].x
+        dy = self.vertices[u].y - self.vertices[v].y
+        return dx * dx + dy * dy
+
+    def vertex_distance(self, u: int, v: int) -> float:
+        """Return Euclidean distance between vertices ``u`` and ``v``."""
+        return sqrt(self.vertex_distance_squared(u, v))
+
+    def show_all_distances(self) -> None:
+        """Print distances for all vertex pairs with comparison to unit range."""
+        for i in range(self.n):
+            for j in range(i + 1, self.n):
+                e = self.is_edge(i, j)
+                edisp = "E" if e else " "
+                d_squared = self.vertex_distance_squared(i, j)
+                comp = "<=" if d_squared <= self.unit_squared else "> "
+                d = sqrt(d_squared)
+                print(f"  {edisp} dist({i},{j}) = {comp} {d:.3f}")
 
 #     def udg_recognition(self, initial_epsilon=0.7):
 #         self.start_time = time.time()
@@ -283,6 +305,60 @@ def tests(verbose=False):
     g.add_edge(3,4)
     print("Graph K2,3 is non UDG:", g.udg_recognition())
 
+def test_coordinates(verbose=False):
+    """Test graph with coordinates."""
+    '''Number of vertices (<enter> to exit): 7
+    V(G) = {1, 2, 3, 4, 5, 6, 7}
+    Random instances (y|n)? n
+    Please type the edges in the format <vertex1>,<vertex2> (e.g., 2,3)
+    Next edge (<enter> if no more edges): 1,2
+    Next edge (<enter> if no more edges): 1,4
+    Next edge (<enter> if no more edges): 2,3
+    Next edge (<enter> if no more edges): 2,5
+    Next edge (<enter> if no more edges): 3,4
+    Next edge (<enter> if no more edges): 3,6
+    Next edge (<enter> if no more edges): 4,7
+    Next edge (<enter> if no more edges): 5,6
+    Next edge (<enter> if no more edges): 6,7
+    Next edge (<enter> if no more edges):
+    Initial granularity (type k for eps=0.7/k, recommended 1):
+    Max levels deep (type 1 for no granularity refinement at all):
+    Display progress (y|n)? n
+
+    mandatory_radius = 30000
+    gray_area_thickness = 0
+
+    Final granularity = 7/40
+
+    Coordinates (upscaled by 30000):
+    1: (0,0)
+    2: (28284,0)
+    3: (28284,14142)
+    4: (7071,28284)
+    5: (56568,0)
+    6: (49497,28284)
+    7: (28284,49497)'''
+
+    g = Graph(7)
+    g.set_verbose(verbose)
+    g.set_coordinate(0,     0,     0)
+    g.set_coordinate(1, 28284,     0)
+    g.set_coordinate(2, 28284, 14142)
+    g.set_coordinate(3,  7071, 28284)
+    g.set_coordinate(4, 56568,     0)
+    g.set_coordinate(5, 49497, 28284)
+    g.set_coordinate(6, 28284, 49497)
+    g.add_edge(0,1) 
+    g.add_edge(0,3)
+    g.add_edge(1,2)
+    g.add_edge(1,4)
+    g.add_edge(2,3)
+    g.add_edge(2,5)
+    g.add_edge(3,6)
+    g.add_edge(4,5)
+    g.add_edge(5,6)
+    g.set_unit(30000)
+    g.show_all_distances()
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -291,6 +367,9 @@ def main() -> None:
     group.add_argument(
         "-t", "--tests", action="store_true",
         help="Run example tests")
+    group.add_argument(
+        "-c", "--coordinates", action="store_true",
+        help="Check graph with coordinates")
     group.add_argument(
         "-g", "--graph6", action="store_true",
         help="Check graph given as graph6")
@@ -308,6 +387,9 @@ def main() -> None:
 
     if args.tests:
         tests(args.verbose)
+        return
+    elif args.coordinates:
+        test_coordinates(args.verbose)
         return
     elif args.graph6:
         g = Graph(Graph6Converter.g6_to_graph(args.graph))
