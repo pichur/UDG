@@ -355,7 +355,7 @@ def tests(verbose=False):
     g.add_edge(3,4)
     print("Graph K2,3 is non UDG:", g.udg_recognition())
 
-def test_coordinates(verbose=False):
+def test_coordinates(verbose=False, draw=False, draw_disks=False):
     """Test graph with coordinates."""
     '''Number of vertices (<enter> to exit): 7
     V(G) = {1, 2, 3, 4, 5, 6, 7}
@@ -409,6 +409,10 @@ def test_coordinates(verbose=False):
     g.add_edge(5,6)
     g.set_unit(30000)
     g.show_all_distances()
+    if draw:
+        g.draw(draw_disks)
+        import matplotlib.pyplot as plt
+        plt.show()
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -418,7 +422,7 @@ def main() -> None:
         "-t", "--tests", action="store_true",
         help="Run example tests")
     group.add_argument(
-        "-c", "--coordinates", action="store_true",
+        "-o", "--coordinates", action="store_true",
         help="Check graph with coordinates")
     group.add_argument(
         "-g", "--graph6", action="store_true",
@@ -426,6 +430,12 @@ def main() -> None:
     group.add_argument(
         "-e", "--edge_list", action="store_true",
         help="Check graph given as edge list")
+    parser.add_argument(
+        "-d", "--draw", action="store_true",
+        help="Draw the graph using stored coordinates")
+    parser.add_argument(
+        "-c", "--circle", action="store_true",
+        help="Draw unit disks when drawing the graph")
     parser.add_argument(
         "-v", "--verbose", action="store_true",
         help="Enable verbose output for debugging")
@@ -439,14 +449,21 @@ def main() -> None:
         tests(args.verbose)
         return
     elif args.coordinates:
-        test_coordinates(args.verbose)
+        test_coordinates(args.verbose, draw=args.draw, draw_disks=args.circle)
         return
     elif args.graph6:
         g = Graph(Graph6Converter.g6_to_graph(args.graph))
     elif args.edge_list:
         g = Graph(Graph6Converter.edge_list_to_graph(args.graph))
 
-    output = g.set_verbose(args.verbose).udg_recognition()
+    g.set_verbose(args.verbose)
+    if args.draw:
+        g.draw(args.circle)
+        import matplotlib.pyplot as plt
+        plt.show()
+        return
+
+    output = g.udg_recognition()
     print("Graph is " + ("" if output else "NOT ") + "a Unit Disk Graph (UDG).")
 
 
