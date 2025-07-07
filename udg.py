@@ -1,12 +1,13 @@
 """Simple Unit Disk Graph recognition algorithm."""
 
-from math import sqrt
+from math import sqrt, sin, cos, pi
 from collections import deque
 import networkx as nx
 import argparse
 import time
 import Graph6Converter
 import numpy as np
+import matplotlib.pyplot as plt
 
 class Graph:
     """Simple adjacency list graph that can be built from an integer number
@@ -86,34 +87,22 @@ class Graph:
 
     def show_all_distances(self) -> None:
         """Print distances for all vertex pairs with comparison to unit range."""
+        fail = False
         for i in range(self.n):
             for j in range(i + 1, self.n):
                 e = self.is_edge(i, j)
                 edisp = "E" if e else " "
                 d_squared = self.vertex_distance_squared(i, j)
-                comp = "<=" if d_squared <= self.unit_squared else "> "
+                dlter = d_squared <= self.unit_squared
+                comp = "<=" if dlter else "> "
                 d = sqrt(d_squared)
                 print(f"  {edisp} dist({i},{j}) = {comp} {d:.3f}")
-
+                if not fail:
+                    fail = (e and not dlter) or (not e and dlter)
+        if fail:
+            print("FAIL: some edges are not in the unit disk range or some non-edges are in the range.")
     def draw(self, draw_disks: bool = False, ax=None):
-        """Visualize the graph using stored vertex coordinates.
-
-        Parameters
-        ----------
-        draw_disks : bool, optional
-            If ``True`` draw a circle of radius ``self.unit`` around every
-            vertex to visualise the unit disk.  Defaults to ``False``.
-        ax : :class:`matplotlib.axes.Axes`, optional
-            Existing axes to draw on.  When ``None`` a new figure and axes
-            are created.
-
-        Returns
-        -------
-        matplotlib.axes.Axes
-            The axes object the graph was drawn on.
-        """
-        import matplotlib.pyplot as plt
-
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
         if ax is None:
             _, ax = plt.subplots()
 
@@ -126,16 +115,16 @@ class Graph:
                     ax.plot(x_values, y_values, color="black", zorder=1)
 
         # draw vertices
-        xs = [self.vertices[i].x for i in range(self.n)]
-        ys = [self.vertices[i].y for i in range(self.n)]
-        ax.scatter(xs, ys, color="red", zorder=2)
+        for i in range(self.n):
+            ax.scatter(self.vertices[i].x, self.vertices[i].y,
+                       color=colors[i % len(colors)], zorder=2)
 
         if draw_disks:
             for i in range(self.n):
                 circle = plt.Circle(
                     (self.vertices[i].x, self.vertices[i].y),
                     self.unit,
-                    color="blue",
+                    color=colors[i % len(colors)],
                     fill=False,
                     linestyle="--",
                     zorder=0,
@@ -355,40 +344,57 @@ def tests(verbose=False):
     g.add_edge(3,4)
     print("Graph K2,3 is non UDG:", g.udg_recognition())
 
-def test_coordinates(verbose=False, draw=False, draw_disks=False):
-    """Test graph with coordinates."""
-    '''Number of vertices (<enter> to exit): 7
-    V(G) = {1, 2, 3, 4, 5, 6, 7}
-    Random instances (y|n)? n
-    Please type the edges in the format <vertex1>,<vertex2> (e.g., 2,3)
-    Next edge (<enter> if no more edges): 1,2
-    Next edge (<enter> if no more edges): 1,4
-    Next edge (<enter> if no more edges): 2,3
-    Next edge (<enter> if no more edges): 2,5
-    Next edge (<enter> if no more edges): 3,4
-    Next edge (<enter> if no more edges): 3,6
-    Next edge (<enter> if no more edges): 4,7
-    Next edge (<enter> if no more edges): 5,6
-    Next edge (<enter> if no more edges): 6,7
-    Next edge (<enter> if no more edges):
-    Initial granularity (type k for eps=0.7/k, recommended 1):
-    Max levels deep (type 1 for no granularity refinement at all):
-    Display progress (y|n)? n
+def test_coordinates_g4(verbose=False):
+    g = Graph(7)
+    g.set_verbose(verbose)
+    g.set_coordinate(0,      0,      0)
+    g.set_coordinate(1,  56568,      0)
+    g.set_coordinate(2, -14142,  14142)
+    g.set_coordinate(3,  35355,  63639)
+    g.set_coordinate(4,  56568, -63639)
+    g.set_coordinate(5, -63639, -35355)
+    g.set_coordinate(6, - 7071, -70710)
+    g.add_edge(0,1)
+    g.add_edge(0,2)
+    g.add_edge(1,3)
+    g.add_edge(1,4)
+    g.add_edge(2,3)
+    g.add_edge(2,5)
+    g.add_edge(4,6)
+    g.add_edge(5,6)
+    g.set_unit(70000)
+    return g
 
-    mandatory_radius = 30000
-    gray_area_thickness = 0
+def test_coordinates_g4a(verbose=False):
+    a = 30
+    b = 5
+    sin_ap = sin((a+b) * pi / 180)
+    cos_ap = cos((a+b) * pi / 180)
+    sin_am = sin((a-b) * pi / 180)
+    cos_am = cos((a-b) * pi / 180)
+    s = 10000
+    e = 1.05
+    g = Graph(7)
+    g.set_verbose(verbose)
+    g.set_coordinate(0,                0,                0    )
+    g.set_coordinate(1, - sin_ap     * a, - cos_ap     * a    )
+    g.set_coordinate(2,                0, -              a * e)
+    g.set_coordinate(3,   sin_ap     * a, - cos_ap     * a    )
+    g.set_coordinate(4, - sin_am * 2 * a, - cos_am * 2 * a / e)
+    g.set_coordinate(5,                0, -          2 * a * e)
+    g.set_coordinate(6,   sin_am * 2 * a, - cos_am * 2 * a / e)
+    g.add_edge(0,1)
+    g.add_edge(0,3)
+    g.add_edge(1,2)
+    g.add_edge(1,4)
+    g.add_edge(2,3)
+    g.add_edge(3,6)
+    g.add_edge(4,5)
+    g.add_edge(5,6)
+    g.set_unit(a)
+    return g
 
-    Final granularity = 7/40
-
-    Coordinates (upscaled by 30000):
-    1: (0,0)
-    2: (28284,0)
-    3: (28284,14142)
-    4: (7071,28284)
-    5: (56568,0)
-    6: (49497,28284)
-    7: (28284,49497)'''
-
+def test_coordinates_g5(verbose=False):
     g = Graph(7)
     g.set_verbose(verbose)
     g.set_coordinate(0,     0,     0)
@@ -398,7 +404,7 @@ def test_coordinates(verbose=False, draw=False, draw_disks=False):
     g.set_coordinate(4, 56568,     0)
     g.set_coordinate(5, 49497, 28284)
     g.set_coordinate(6, 28284, 49497)
-    g.add_edge(0,1) 
+    g.add_edge(0,1)
     g.add_edge(0,3)
     g.add_edge(1,2)
     g.add_edge(1,4)
@@ -408,11 +414,33 @@ def test_coordinates(verbose=False, draw=False, draw_disks=False):
     g.add_edge(4,5)
     g.add_edge(5,6)
     g.set_unit(30000)
-    g.show_all_distances()
-    if draw:
-        g.draw(draw_disks)
-        import matplotlib.pyplot as plt
-        plt.show()
+    return g
+
+def test_coordinates_g5a(verbose=False, draw=False, draw_disks=False):
+    sin_30 = 0.5  # sin(30 degrees)
+    sin_60 = 0.8660254037844387  # sin(60 degrees)
+    a = 10000
+    e = 1.5
+    g = Graph(7)
+    g.set_verbose(verbose)
+    g.set_coordinate(0,                0,                0)
+    g.set_coordinate(1,                0,                a)
+    g.set_coordinate(2,   sin_60     * a, - sin_30     * a)
+    g.set_coordinate(3, - sin_60     * a, - sin_30     * a)
+    g.set_coordinate(4,   sin_60 * e * a,   sin_30 * e * a)
+    g.set_coordinate(5,                0, -          e * a)
+    g.set_coordinate(6, - sin_60 * e * a,   sin_30 * e * a)
+    g.add_edge(0,1) 
+    g.add_edge(0,2)
+    g.add_edge(0,3)
+    g.add_edge(1,4)
+    g.add_edge(2,4)
+    g.add_edge(2,5)
+    g.add_edge(3,5)
+    g.add_edge(3,6)
+    g.add_edge(1,6)
+    g.set_unit(0.95 * e * a)
+    return g
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -445,26 +473,39 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    check = False
     if args.tests:
         tests(args.verbose)
         return
     elif args.coordinates:
-        test_coordinates(args.verbose, draw=args.draw, draw_disks=args.circle)
-        return
+        if args.graph == 'g4':
+            g = test_coordinates_g4(args.verbose)
+        elif args.graph == 'g4a':
+            g = test_coordinates_g4a(args.verbose)
+        elif args.graph == 'g5':
+            g = test_coordinates_g5(args.verbose)
+        elif args.graph == 'g5a':
+            g = test_coordinates_g5a(args.verbose)
+        g.show_all_distances()
     elif args.graph6:
         g = Graph(Graph6Converter.g6_to_graph(args.graph))
+        check = True
     elif args.edge_list:
         g = Graph(Graph6Converter.edge_list_to_graph(args.graph))
+        check = True
 
     g.set_verbose(args.verbose)
+
+    if check:
+        output = g.udg_recognition()
+        print("Graph is " + ("" if output else "NOT ") + "a Unit Disk Graph (UDG).")
+
     if args.draw:
         g.draw(args.circle)
         import matplotlib.pyplot as plt
         plt.show()
         return
 
-    output = g.udg_recognition()
-    print("Graph is " + ("" if output else "NOT ") + "a Unit Disk Graph (UDG).")
 
 
 if __name__ == "__main__":
