@@ -419,7 +419,7 @@ def test_coordinates_g5(verbose=False):
     g.set_unit(30000)
     return g
 
-def test_coordinates_g5a(verbose=False, draw=False, draw_disks=False):
+def test_coordinates_g5a(verbose=False):
     a = 30
     sin_a = sin(a * pi / 180)
     cos_a = cos(a * pi / 180)
