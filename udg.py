@@ -85,8 +85,10 @@ class Graph:
         """Return Euclidean distance between vertices ``u`` and ``v``."""
         return sqrt(self.vertex_distance_squared(u, v))
 
-    def show_all_distances(self) -> None:
-        """Print distances for all vertex pairs with comparison to unit range."""
+    def print_coordinates(self, print_vertex: bool, print_edges: bool) -> None:
+        if (print_vertex):
+            for i in range(self.n):
+                print(f"  V ({i}): ({self.vertices[i].x:7d}, {self.vertices[i].y:7d})")
         fail = False
         for i in range(self.n):
             for j in range(i + 1, self.n):
@@ -96,7 +98,8 @@ class Graph:
                 dlter = d_squared <= self.unit_squared
                 comp = "<=" if dlter else "> "
                 d = sqrt(d_squared)
-                print(f"  {edisp} dist({i},{j}) = {comp} {d:.3f}")
+                if (print_edges):
+                    print(f"  {edisp} dist({i},{j}) {d:10.3f} {comp} {self.unit:7d} ")
                 if not fail:
                     fail = (e and not dlter) or (not e and dlter)
         if fail:
@@ -372,17 +375,17 @@ def test_coordinates_g4a(verbose=False):
     cos_ap = cos((a+b) * pi / 180)
     sin_am = sin((a-b) * pi / 180)
     cos_am = cos((a-b) * pi / 180)
-    s = 10000
+    u = 30000
     e = 1.05
     g = Graph(7)
     g.set_verbose(verbose)
     g.set_coordinate(0,                0,                0    )
-    g.set_coordinate(1, - sin_ap     * a, - cos_ap     * a    )
-    g.set_coordinate(2,                0, -              a * e)
-    g.set_coordinate(3,   sin_ap     * a, - cos_ap     * a    )
-    g.set_coordinate(4, - sin_am * 2 * a, - cos_am * 2 * a / e)
-    g.set_coordinate(5,                0, -          2 * a * e)
-    g.set_coordinate(6,   sin_am * 2 * a, - cos_am * 2 * a / e)
+    g.set_coordinate(1, - sin_ap     * u, - cos_ap     * u    )
+    g.set_coordinate(2,                0, -              u * e)
+    g.set_coordinate(3,   sin_ap     * u, - cos_ap     * u    )
+    g.set_coordinate(4, - sin_am * 2 * u, - cos_am * 2 * u / e)
+    g.set_coordinate(5,                0, -          2 * u * e)
+    g.set_coordinate(6,   sin_am * 2 * u, - cos_am * 2 * u / e)
     g.add_edge(0,1)
     g.add_edge(0,3)
     g.add_edge(1,2)
@@ -391,7 +394,7 @@ def test_coordinates_g4a(verbose=False):
     g.add_edge(3,6)
     g.add_edge(4,5)
     g.add_edge(5,6)
-    g.set_unit(a)
+    g.set_unit(u)
     return g
 
 def test_coordinates_g5(verbose=False):
@@ -417,19 +420,21 @@ def test_coordinates_g5(verbose=False):
     return g
 
 def test_coordinates_g5a(verbose=False, draw=False, draw_disks=False):
-    sin_30 = 0.5  # sin(30 degrees)
-    sin_60 = 0.8660254037844387  # sin(60 degrees)
-    a = 10000
-    e = 1.5
+    a = 30
+    sin_a = sin(a * pi / 180)
+    cos_a = cos(a * pi / 180)
+    u = 30000
+    e = 0.578
+    f = 1.154
     g = Graph(7)
     g.set_verbose(verbose)
-    g.set_coordinate(0,                0,                0)
-    g.set_coordinate(1,                0,                a)
-    g.set_coordinate(2,   sin_60     * a, - sin_30     * a)
-    g.set_coordinate(3, - sin_60     * a, - sin_30     * a)
-    g.set_coordinate(4,   sin_60 * e * a,   sin_30 * e * a)
-    g.set_coordinate(5,                0, -          e * a)
-    g.set_coordinate(6, - sin_60 * e * a,   sin_30 * e * a)
+    g.set_coordinate(0,               0,               0)
+    g.set_coordinate(1,               0,           e * u)
+    g.set_coordinate(2,   cos_a * e * u, - sin_a * e * u)
+    g.set_coordinate(3, - cos_a * e * u, - sin_a * e * u)
+    g.set_coordinate(4,   cos_a * f * u,   sin_a * f * u)
+    g.set_coordinate(5,               0, -         f * u)
+    g.set_coordinate(6, - cos_a * f * u,   sin_a * f * u)
     g.add_edge(0,1) 
     g.add_edge(0,2)
     g.add_edge(0,3)
@@ -439,7 +444,7 @@ def test_coordinates_g5a(verbose=False, draw=False, draw_disks=False):
     g.add_edge(3,5)
     g.add_edge(3,6)
     g.add_edge(1,6)
-    g.set_unit(0.95 * e * a)
+    g.set_unit(u)
     return g
 
 def main() -> None:
@@ -458,6 +463,12 @@ def main() -> None:
     group.add_argument(
         "-e", "--edge_list", action="store_true",
         help="Check graph given as edge list")
+    parser.add_argument(
+        "-p", "--print_vertex", action="store_true",
+        help="Print coordinates for each vertex")
+    parser.add_argument(
+        "-r", "--print_edges", action="store_true",
+        help="Print distances for each edge")
     parser.add_argument(
         "-d", "--draw", action="store_true",
         help="Draw the graph using stored coordinates")
@@ -486,7 +497,7 @@ def main() -> None:
             g = test_coordinates_g5(args.verbose)
         elif args.graph == 'g5a':
             g = test_coordinates_g5a(args.verbose)
-        g.show_all_distances()
+        g.print_coordinates(args.print_vertex, args.print_edges)
     elif args.graph6:
         g = Graph(Graph6Converter.g6_to_graph(args.graph))
         check = True
@@ -505,8 +516,6 @@ def main() -> None:
         import matplotlib.pyplot as plt
         plt.show()
         return
-
-
 
 if __name__ == "__main__":
     main()
