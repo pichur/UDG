@@ -2,6 +2,7 @@ import time
 from dataclasses import dataclass
 import numpy as np
 import matplotlib.pyplot as plt
+import argparse
 
 N=2**8
 
@@ -42,11 +43,37 @@ I = 0b11 # symbol 'I' (interior) 3
 B = 0b01 # symbol 'B' (boundary) 1
 O = 0b00 # symbol 'O' (outer   ) 0
 
+def symmetric_set(M: np.ndarray, i: int, j: int, radius: int, symbol: np.uint8) -> None:
+    """Ustawia symetryczne komórki w macierzy M."""
+    M[radius + i    , radius + j    ] = symbol
+    M[radius + i    , radius - j - 1] = symbol
+    M[radius - i - 1, radius + j    ] = symbol
+    M[radius - i - 1, radius - j - 1] = symbol
+    M[radius + j    , radius + i    ] = symbol
+    M[radius + j    , radius - i - 1] = symbol
+    M[radius - j - 1, radius + i    ] = symbol
+    M[radius - j - 1, radius - i - 1] = symbol
 
 @dataclass
 class DiscreteDisk:
     data: np.ndarray
     pos: tuple[int, int]
+
+    @classmethod
+    def from_radius(cls, radius: int) -> "DiscreteDisk":
+        r = radius + 3
+        M = np.full((2 * r, 2 * r), I, dtype=np.uint8)
+        for x in range(r):
+            for y in range(x, r):
+                if DS[idx(x, y)] > ROS[radius]:
+                    symmetric_set(M, x, y, r, O)
+                elif DS[idx(x, y)] > RIS[radius]:
+                    symmetric_set(M, x, y, r, B)
+        return cls(M, (-r, -r))
+
+    def shift(self, dx: int = 0, dy: int = 0) -> "DiscreteDisk":
+        self.pos = (self.pos[0] + dx, self.pos[1] + dy)
+        return self
 
     def iter_points(self, types: tuple[np.uint8, ...] = (I, B)):
         """Iterate over points of selected types.
@@ -69,36 +96,6 @@ class DiscreteDisk:
                 if self.data[j, i] in types:
                     x = self.pos[0] + i
                     yield (x, y)
-
-def symmetric_set(M: np.ndarray, i: int, j: int, radius: int, symbol: np.uint8) -> None:
-    """Ustawia symetryczne komórki w macierzy M."""
-    M[radius + i    , radius + j    ] = symbol
-    M[radius + i    , radius - j - 1] = symbol
-    M[radius - i - 1, radius + j    ] = symbol
-    M[radius - i - 1, radius - j - 1] = symbol
-    M[radius + j    , radius + i    ] = symbol
-    M[radius + j    , radius - i - 1] = symbol
-    M[radius - j - 1, radius + i    ] = symbol
-    M[radius - j - 1, radius - i - 1] = symbol
-
-def discrete_disk(radius: int) -> DiscreteDisk:
-    r = radius + 3
-    M = np.full((2 * r, 2 * r), I, dtype=np.uint8)
-    for x in range(r):
-        for y in range(x, r):
-            if DS[idx(x,y)] > ROS[radius]:
-                symmetric_set(M, x, y, r, O)
-            elif DS[idx(x,y)] > RIS[radius]:
-                symmetric_set(M, x, y, r, B)
-    return DiscreteDisk(M, (-r, -r))
-
-def shift(D: DiscreteDisk, dx: int = 0, dy: int = 0) -> DiscreteDisk:
-    """Return a shifted copy of ``D``.
-
-    Only the ``pos`` attribute is changed. The underlying matrix is shared
-    between the returned object and ``D``.
-    """
-    return DiscreteDisk(D.data, (D.pos[0] + dx, D.pos[1] + dy))
 
 
 def meet(A: DiscreteDisk, B: DiscreteDisk, shift_b: tuple[int, int] = (0, 0)) -> DiscreteDisk:
@@ -177,6 +174,17 @@ def display(M, ax=None) -> "plt.Axes":
     return ax
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Discrete Disk Helper.")
+
+    parser.add_argument(
+        "-p", "--print", action="store_true",
+        help="Print area of the discrete disk")
+    parser.add_argument(
+        "-d", "--display", action="store_true",
+        help="Display the area of the discrete disk")
+    
+    args = parser.parse_args()
+
     s = time.perf_counter()
     R_CALC()
     s = time.perf_counter() - s
@@ -190,7 +198,7 @@ if __name__ == "__main__":
     n = 32
 
     s = time.perf_counter()
-    a = discrete_disk(n)  # A = dysk o promieniu n
+    a = DiscreteDisk.from_radius(n)
     s = time.perf_counter() - s
     print(f"Time discrete_disk({n}): {s:.6f} seconds")
 
@@ -198,26 +206,23 @@ if __name__ == "__main__":
     b = meet(a, a, (16, 0))
     s = time.perf_counter() - s
 
-    print = False
-    display = False
-
-    if print:
+    if args.print:
         print("A:")
         print(show(a))
 
         print("A shift(2,3):")
-        print(show(shift(a, 2, 3)))
+        print(show(a.shift(2, 3)))
 
         print("A shift(-3,-4):")
-        print(show(shift(a, -3, -4)))
+        print(show(a.shift(-3, -4)))
 
         print("A shift(-3,-4) & A shift(2,3):")
-        print(show(meet(shift(a, -3, -4), shift(a, 2, 3))))
+        print(show(meet(a.shift(-3, -4), a.shift(2, 3))))
 
         print("A & A->(16,0):")
         print(f"Time meet(a, a, (16, 0)): {s:.6f} seconds")
         print(show(b))
 
-    if display:
+    if args.display:
         display(b)
         plt.show()
