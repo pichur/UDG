@@ -35,12 +35,12 @@ def symmetric_set(M: np.ndarray, i: int, j: int, radius: int, symbol: np.uint8) 
 def discrete_disk(radius: int) -> np.ndarray:
     r = radius + 3
     M = np.full((2*r, 2*r), I, dtype=np.uint8)
-    for i in range(r):
-        for j in range(i, r):
-            if DS[idx(i,j)] > ROS[radius]:
-                symmetric_set(M, i, j, r, O)
-            elif DS[idx(i,j)] > RIS[radius]:
-                symmetric_set(M, i, j, r, B)
+    for x in range(r):
+        for y in range(x, r):
+            if DS[idx(x,y)] > ROS[radius]:
+                symmetric_set(M, x, y, r, O)
+            elif DS[idx(x,y)] > RIS[radius]:
+                symmetric_set(M, x, y, r, B)
     return M
 
 I = 0b11 # symbol 'I' (interior) 3
@@ -48,14 +48,10 @@ B = 0b01 # symbol 'B' (boundary) 1
 O = 0b00 # symbol 'O' (outer   ) 0
 
 # Mapowanie kodów na litery dla podglądu
-DEC = np.array(['O', 'B', 'x', 'I'])
+DEC = np.array(['O', 'B', '?', 'I'])
 
-def new_table(n: int, fill=O) -> np.ndarray:
-    """Zwraca tablicę n×n wypełnioną symbolem fill (I/B/O)."""
-    return np.full((n, n), fill, dtype=np.uint8)
-
-def shift(M: np.ndarray, dy: int = 0, dx: int = 0, fill: np.uint8 = O) -> np.ndarray:
-    """Zwraca tablicę przesuniętą o ``dy`` w pionie i ``dx`` w poziomie.
+def shift(M: np.ndarray, dx: int = 0, dy: int = 0, fill: np.uint8 = O) -> np.ndarray:
+    """Zwraca tablicę przesuniętą o ``dx`` w poziomie i ``dy`` w pionie.
 
     W razie potrzeby tablica jest powiększana tak, aby cała zawartość mieściła
     się w nowym obszarze. Nowe komórki wypełniane są symbolem ``fill``.
@@ -63,22 +59,22 @@ def shift(M: np.ndarray, dy: int = 0, dx: int = 0, fill: np.uint8 = O) -> np.nda
     h, w = M.shape
     top_pad = max(dy, 0)
     bottom_pad = max(-dy, 0)
-    left_pad = max(dx, 0)
-    right_pad = max(-dx, 0)
+    right_pad = max(dx, 0)
+    left_pad = max(-dx, 0)
     result = np.full((h + top_pad + bottom_pad, w + left_pad + right_pad),
                      fill, dtype=M.dtype)
-    result[top_pad:top_pad + h, left_pad:left_pad + w] = M
+    result[top_pad:top_pad + h, right_pad:right_pad + w] = M
     return result
 
 
 def meet(A: np.ndarray, B: np.ndarray, shift_b: tuple[int, int] = (0, 0)) -> np.ndarray:
     """Zwraca wynik A ⊓ B w tym samym kodowaniu.
 
-    Tablica ``B`` może zostać przesunięta o ``shift_b`` (``dy``, ``dx``) przed
+    Tablica ``B`` może zostać przesunięta o ``shift_b`` (``dx``, ``dy``) przed
     wykonaniem operacji. Funkcja obsługuje tablice o różnych rozmiarach i
     zwraca obszar obejmujący oba argumenty.
     """
-    dy, dx = shift_b
+    dx, dy = shift_b
     a_h, a_w = A.shape
     b_h, b_w = B.shape
 
@@ -100,16 +96,27 @@ def meet(A: np.ndarray, B: np.ndarray, shift_b: tuple[int, int] = (0, 0)) -> np.
 
 def show(M: np.ndarray, symbol_map : np.ndarray = np.array(['◦', '▒', '?', '█'])) -> str:
     """█▓▒░∙◦ Zwraca widok n×n jako kwadrat zapełniony znakami: '█' dla I, '▒' dla B, '◦' dla O."""
-    rows = [''.join(symbol_map[row]) for row in M]
+    rows = [''.join(symbol_map[row]) for row in M[::-1]]
     return '\n'.join(rows)
 
 if __name__ == "__main__":
     n = 16
     A = discrete_disk(n)  # A = dysk o promieniu n
 
-    aaaa = show(A)
     print("A:")
-    print(aaaa)
+    print(show(A))
+
+    print("A shift(2,3):")
+    print(show(shift(A, 2, 3)))
+
+    print("A shift(-3,-4):")
+    print(show(shift(A, -3, -4)))
+
+    print("A shift(-3,-4) & A shift(2,3):")
+    print(show(meet(shift(A, -3, -4), shift(A, 2, 3))))
+
+    print("A & A->(16,0):")
+    print(show(meet(A, A, (16, 0))))
     # print("B:\n", show(B))
     # print("C = A ⊓ B:\n", show(C))
 
