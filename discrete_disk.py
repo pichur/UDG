@@ -54,9 +54,49 @@ def new_table(n: int, fill=O) -> np.ndarray:
     """Zwraca tablicę n×n wypełnioną symbolem fill (I/B/O)."""
     return np.full((n, n), fill, dtype=np.uint8)
 
-def meet(A: np.ndarray, B: np.ndarray) -> np.ndarray:
-    """Zwraca wynik A ⊓ B w tym samym kodowaniu."""
-    return A & B      # działa wektorowo i natychmiast
+def shift(M: np.ndarray, dy: int = 0, dx: int = 0, fill: np.uint8 = O) -> np.ndarray:
+    """Zwraca tablicę przesuniętą o ``dy`` w pionie i ``dx`` w poziomie.
+
+    W razie potrzeby tablica jest powiększana tak, aby cała zawartość mieściła
+    się w nowym obszarze. Nowe komórki wypełniane są symbolem ``fill``.
+    """
+    h, w = M.shape
+    top_pad = max(dy, 0)
+    bottom_pad = max(-dy, 0)
+    left_pad = max(dx, 0)
+    right_pad = max(-dx, 0)
+    result = np.full((h + top_pad + bottom_pad, w + left_pad + right_pad),
+                     fill, dtype=M.dtype)
+    result[top_pad:top_pad + h, left_pad:left_pad + w] = M
+    return result
+
+
+def meet(A: np.ndarray, B: np.ndarray, shift_b: tuple[int, int] = (0, 0)) -> np.ndarray:
+    """Zwraca wynik A ⊓ B w tym samym kodowaniu.
+
+    Tablica ``B`` może zostać przesunięta o ``shift_b`` (``dy``, ``dx``) przed
+    wykonaniem operacji. Funkcja obsługuje tablice o różnych rozmiarach i
+    zwraca obszar obejmujący oba argumenty.
+    """
+    dy, dx = shift_b
+    a_h, a_w = A.shape
+    b_h, b_w = B.shape
+
+    min_row = min(0, dy)
+    min_col = min(0, dx)
+    max_row = max(a_h, dy + b_h)
+    max_col = max(a_w, dx + b_w)
+
+    height = max_row - min_row
+    width = max_col - min_col
+
+    AA = np.full((height, width), O, dtype=np.uint8)
+    BB = np.full((height, width), O, dtype=np.uint8)
+
+    AA[-min_row:-min_row + a_h, -min_col:-min_col + a_w] = A
+    BB[dy - min_row:dy - min_row + b_h, dx - min_col:dx - min_col + b_w] = B
+
+    return AA & BB
 
 def show(M: np.ndarray, symbol_map : np.ndarray = np.array(['◦', '▒', '?', '█'])) -> str:
     """█▓▒░∙◦ Zwraca widok n×n jako kwadrat zapełniony znakami: '█' dla I, '▒' dla B, '◦' dla O."""
