@@ -1,4 +1,5 @@
 import time
+from dataclasses import dataclass
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -41,6 +42,34 @@ I = 0b11 # symbol 'I' (interior) 3
 B = 0b01 # symbol 'B' (boundary) 1
 O = 0b00 # symbol 'O' (outer   ) 0
 
+
+@dataclass
+class DiscreteDisk:
+    data: np.ndarray
+    pos: tuple[int, int]
+
+    def iter_points(self, types: tuple[np.uint8, ...] = (I, B)):
+        """Iterate over points of selected types.
+
+        Parameters
+        ----------
+        types : tuple[np.uint8, ...], optional
+            Cell types to iterate over. Defaults to ``(I, B)``.
+
+        Yields
+        ------
+        tuple[int, int]
+            ``(x, y)`` coordinates of matching cells, ordered row by row with
+            ``y`` increasing first and ``x`` increasing second.
+        """
+        h, w = self.data.shape
+        for j in range(h):
+            y = self.pos[1] + j
+            for i in range(w):
+                if self.data[j, i] in types:
+                    x = self.pos[0] + i
+                    yield (x, y)
+
 def symmetric_set(M: np.ndarray, i: int, j: int, radius: int, symbol: np.uint8) -> None:
     """Ustawia symetryczne komórki w macierzy M."""
     M[radius + i    , radius + j    ] = symbol
@@ -52,49 +81,45 @@ def symmetric_set(M: np.ndarray, i: int, j: int, radius: int, symbol: np.uint8) 
     M[radius - j - 1, radius + i    ] = symbol
     M[radius - j - 1, radius - i - 1] = symbol
 
-def discrete_disk(radius: int) -> np.ndarray:
+def discrete_disk(radius: int) -> DiscreteDisk:
     r = radius + 3
-    M = np.full((2*r, 2*r), I, dtype=np.uint8)
+    M = np.full((2 * r, 2 * r), I, dtype=np.uint8)
     for x in range(r):
         for y in range(x, r):
             if DS[idx(x,y)] > ROS[radius]:
                 symmetric_set(M, x, y, r, O)
             elif DS[idx(x,y)] > RIS[radius]:
                 symmetric_set(M, x, y, r, B)
-    return M
+    return DiscreteDisk(M, (-r, -r))
 
-def shift(M: np.ndarray, dx: int = 0, dy: int = 0, fill: np.uint8 = O) -> np.ndarray:
-    """Zwraca tablicę przesuniętą o ``dx`` w poziomie i ``dy`` w pionie.
+def shift(D: DiscreteDisk, dx: int = 0, dy: int = 0) -> DiscreteDisk:
+    """Return a shifted copy of ``D``.
 
-    W razie potrzeby tablica jest powiększana tak, aby cała zawartość mieściła
-    się w nowym obszarze. Nowe komórki wypełniane są symbolem ``fill``.
+    Only the ``pos`` attribute is changed. The underlying matrix is shared
+    between the returned object and ``D``.
     """
-    h, w = M.shape
-    top_pad = max(dy, 0)
-    bottom_pad = max(-dy, 0)
-    right_pad = max(dx, 0)
-    left_pad = max(-dx, 0)
-    result = np.full((h + top_pad + bottom_pad, w + left_pad + right_pad),
-                     fill, dtype=M.dtype)
-    result[top_pad:top_pad + h, right_pad:right_pad + w] = M
-    return result
+    return DiscreteDisk(D.data, (D.pos[0] + dx, D.pos[1] + dy))
 
 
-def meet(A: np.ndarray, B: np.ndarray, shift_b: tuple[int, int] = (0, 0)) -> np.ndarray:
-    """Zwraca wynik A ⊓ B w tym samym kodowaniu.
+def meet(A: DiscreteDisk, B: DiscreteDisk, shift_b: tuple[int, int] = (0, 0)) -> DiscreteDisk:
+    """Return ``A`` ⊓ ``B`` taking positions into account.
 
-    Tablica ``B`` może zostać przesunięta o ``shift_b`` (``dx``, ``dy``) przed
-    wykonaniem operacji. Funkcja obsługuje tablice o różnych rozmiarach i
-    zwraca obszar obejmujący oba argumenty.
+    Parameters
+    ----------
+    A, B : DiscreteDisk
+        Input disks. ``B`` can be additionally shifted by ``shift_b``.
+    shift_b : tuple[int, int], optional
+        Additional shift applied to ``B`` before intersection.
     """
     dx, dy = shift_b
-    a_h, a_w = A.shape
-    b_h, b_w = B.shape
+    b_pos = (B.pos[0] + dx, B.pos[1] + dy)
+    a_h, a_w = A.data.shape
+    b_h, b_w = B.data.shape
 
-    min_row = min(0, dy)
-    min_col = min(0, dx)
-    max_row = max(a_h, dy + b_h)
-    max_col = max(a_w, dx + b_w)
+    min_row = min(A.pos[1], b_pos[1])
+    min_col = min(A.pos[0], b_pos[0])
+    max_row = max(A.pos[1] + a_h, b_pos[1] + b_h)
+    max_col = max(A.pos[0] + a_w, b_pos[0] + b_w)
 
     height = max_row - min_row
     width = max_col - min_col
@@ -102,23 +127,31 @@ def meet(A: np.ndarray, B: np.ndarray, shift_b: tuple[int, int] = (0, 0)) -> np.
     AA = np.full((height, width), O, dtype=np.uint8)
     BB = np.full((height, width), O, dtype=np.uint8)
 
-    AA[-min_row:-min_row + a_h, -min_col:-min_col + a_w] = A
-    BB[dy - min_row:dy - min_row + b_h, dx - min_col:dx - min_col + b_w] = B
+    A_off_r = A.pos[1] - min_row
+    A_off_c = A.pos[0] - min_col
+    AA[A_off_r:A_off_r + a_h, A_off_c:A_off_c + a_w] = A.data
 
-    return AA & BB
+    B_off_r = b_pos[1] - min_row
+    B_off_c = b_pos[0] - min_col
+    BB[B_off_r:B_off_r + b_h, B_off_c:B_off_c + b_w] = B.data
 
-def show(M: np.ndarray, symbol_map : np.ndarray = np.array(['◦', '▒', '?', '█'])) -> str:
-    """█▓▒░∙◦ Zwraca widok n×n jako kwadrat zapełniony znakami: '█' dla I, '▒' dla B, '◦' dla O."""
+    return DiscreteDisk(AA & BB, (min_col, min_row))
+
+def show(M, symbol_map: np.ndarray = np.array(['◦', '▒', '?', '█'])) -> str:
+    """Return an ASCII representation of the matrix or :class:`DiscreteDisk`."""
+    if isinstance(M, DiscreteDisk):
+        M = M.data
     rows = [''.join(symbol_map[row]) for row in M[::-1]]
     return '\n'.join(rows)
 
-def display(M: np.ndarray, ax=None) -> "plt.Axes":
+def display(M, ax=None) -> "plt.Axes":
     """Display the disk using :mod:`matplotlib`.
 
     Parameters
     ----------
-    M : np.ndarray
-        Matrix returned by :func:`discrete_disk`.
+    M : np.ndarray or DiscreteDisk
+        Matrix or :class:`DiscreteDisk` instance returned by
+        :func:`discrete_disk`.
     ax : matplotlib.axes.Axes, optional
         Target axes. If ``None``, a new figure and axes are created.
 
@@ -132,6 +165,9 @@ def display(M: np.ndarray, ax=None) -> "plt.Axes":
 
     if ax is None:
         _, ax = plt.subplots()
+
+    if isinstance(M, DiscreteDisk):
+        M = M.data
 
     cmap = ListedColormap(['white', 'lightgray', 'red', 'black'])
     ax.imshow(M[::-1], interpolation='nearest', cmap=cmap, vmin=0, vmax=3)
