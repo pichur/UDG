@@ -99,6 +99,34 @@ def show(M: np.ndarray, symbol_map : np.ndarray = np.array(['◦', '▒', '?', '
     rows = [''.join(symbol_map[row]) for row in M[::-1]]
     return '\n'.join(rows)
 
+def display(M: np.ndarray, ax=None) -> "plt.Axes":
+    """Display the disk using :mod:`matplotlib`.
+
+    Parameters
+    ----------
+    M : np.ndarray
+        Matrix returned by :func:`discrete_disk`.
+    ax : matplotlib.axes.Axes, optional
+        Target axes. If ``None``, a new figure and axes are created.
+
+    Returns
+    -------
+    matplotlib.axes.Axes
+        The axes with the rendered image.
+    """
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import ListedColormap
+
+    if ax is None:
+        _, ax = plt.subplots()
+
+    cmap = ListedColormap(['white', 'lightgray', 'red', 'black'])
+    ax.imshow(M[::-1], interpolation='nearest', cmap=cmap, vmin=0, vmax=3)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_aspect('equal', adjustable='box')
+    return ax
+
 if __name__ == "__main__":
     n = 16
     A = discrete_disk(n)  # A = dysk o promieniu n
@@ -119,6 +147,10 @@ if __name__ == "__main__":
     print(show(meet(A, A, (16, 0))))
     # print("B:\n", show(B))
     # print("C = A ⊓ B:\n", show(C))
+
+    display(A)
+    import matplotlib.pyplot as plt
+    plt.show()
 
 
 # if __name__ == "__main__":
