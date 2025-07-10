@@ -1,25 +1,45 @@
+import time
 import numpy as np
+import matplotlib.pyplot as plt
 
 N=2**8
 
 DSQRT2 = 2*np.sqrt(2)
 
-RIS = np.empty(N, dtype='int64')
-ROS = np.empty(N, dtype='int64')
-RIS[0] = 0
-ROS[0] = 2
-for i in range(1,N):
-    c = i**2 + 2
-    d = np.floor(i*DSQRT2)
-    RIS[i] = c - d
-    ROS[i] = c + d
+def R_CALC():
+    global RI, RO, RIS, ROS
+    RI  = np.empty(N, dtype='int64')
+    RO  = np.empty(N, dtype='int64')
+    RIS = np.empty(N, dtype='int64')
+    ROS = np.empty(N, dtype='int64')
+    RI [0] = 0
+    RO [0] = 1
+    RIS[0] = 0
+    ROS[0] = 2
+    for i in range(1,N):
+        b = i*DSQRT2
+        c = i**2 + 2
+        d = np.floor(b)
+        RI [i] = np.floor(np.sqrt(c - b))
+        RO [i] = np.floor(np.sqrt(c + b))
+        RIS[i] = c - d
+        ROS[i] = c + d
+R_CALC()
 
-size = N*(N+1)//2
-DS = np.empty(size, dtype='int64')
 idx = lambda i,j: i*N - i*(i+1)//2 + (j-i)  # i<j
-for i in range(N):
-    for j in range(i, N):
-        DS[idx(i,j)] = i**2 + j**2
+
+def D_CALC():
+    global DS
+    size = N*(N+1)//2
+    DS = np.empty(size, dtype='int64')
+    for i in range(N):
+        for j in range(i, N):
+            DS[idx(i,j)] = i**2 + j**2
+D_CALC()
+
+I = 0b11 # symbol 'I' (interior) 3
+B = 0b01 # symbol 'B' (boundary) 1
+O = 0b00 # symbol 'O' (outer   ) 0
 
 def symmetric_set(M: np.ndarray, i: int, j: int, radius: int, symbol: np.uint8) -> None:
     """Ustawia symetryczne komórki w macierzy M."""
@@ -42,13 +62,6 @@ def discrete_disk(radius: int) -> np.ndarray:
             elif DS[idx(x,y)] > RIS[radius]:
                 symmetric_set(M, x, y, r, B)
     return M
-
-I = 0b11 # symbol 'I' (interior) 3
-B = 0b01 # symbol 'B' (boundary) 1
-O = 0b00 # symbol 'O' (outer   ) 0
-
-# Mapowanie kodów na litery dla podglądu
-DEC = np.array(['O', 'B', '?', 'I'])
 
 def shift(M: np.ndarray, dx: int = 0, dy: int = 0, fill: np.uint8 = O) -> np.ndarray:
     """Zwraca tablicę przesuniętą o ``dx`` w poziomie i ``dy`` w pionie.
@@ -128,34 +141,47 @@ def display(M: np.ndarray, ax=None) -> "plt.Axes":
     return ax
 
 if __name__ == "__main__":
-    n = 16
-    A = discrete_disk(n)  # A = dysk o promieniu n
+    s = time.perf_counter()
+    R_CALC()
+    s = time.perf_counter() - s
+    print(f"Time R_CALC: {s:.6f} seconds")
 
-    print("A:")
-    print(show(A))
+    s = time.perf_counter()
+    D_CALC()
+    s = time.perf_counter() - s
+    print(f"Time D_CALC: {s:.6f} seconds")
 
-    print("A shift(2,3):")
-    print(show(shift(A, 2, 3)))
+    n = 32
 
-    print("A shift(-3,-4):")
-    print(show(shift(A, -3, -4)))
+    s = time.perf_counter()
+    a = discrete_disk(n)  # A = dysk o promieniu n
+    s = time.perf_counter() - s
+    print(f"Time discrete_disk({n}): {s:.6f} seconds")
 
-    print("A shift(-3,-4) & A shift(2,3):")
-    print(show(meet(shift(A, -3, -4), shift(A, 2, 3))))
+    s = time.perf_counter()
+    b = meet(a, a, (16, 0))
+    s = time.perf_counter() - s
 
-    print("A & A->(16,0):")
-    print(show(meet(A, A, (16, 0))))
-    # print("B:\n", show(B))
-    # print("C = A ⊓ B:\n", show(C))
+    print = False
+    display = False
 
-    display(A)
-    import matplotlib.pyplot as plt
-    plt.show()
+    if print:
+        print("A:")
+        print(show(a))
 
+        print("A shift(2,3):")
+        print(show(shift(a, 2, 3)))
 
-# if __name__ == "__main__":
-#     radius = 4
-#     points = discrete_disk(radius)
-#     print(f"Points in discrete disk of radius {radius}:")
-#     for point in points:
-#         print(point)
+        print("A shift(-3,-4):")
+        print(show(shift(a, -3, -4)))
+
+        print("A shift(-3,-4) & A shift(2,3):")
+        print(show(meet(shift(a, -3, -4), shift(a, 2, 3))))
+
+        print("A & A->(16,0):")
+        print(f"Time meet(a, a, (16, 0)): {s:.6f} seconds")
+        print(show(b))
+
+    if display:
+        display(b)
+        plt.show()
