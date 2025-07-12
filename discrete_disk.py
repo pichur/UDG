@@ -9,6 +9,7 @@ N=2**8
 DSQRT2 = 2*np.sqrt(2)
 
 def R_CALC():
+    """Calculate the ranges for discrete disks."""
     global RI, RO, RIS, ROS
     RI  = np.empty(N, dtype='int64')
     RO  = np.empty(N, dtype='int64')
@@ -19,13 +20,13 @@ def R_CALC():
     RIS[0] = 0
     ROS[0] = 2
     for i in range(1,N):
+        a = i**2
         b = i*DSQRT2
-        c = i**2 + 2
-        d = np.floor(b)
-        RI [i] = np.floor(np.sqrt(c - b))
-        RO [i] = np.floor(np.sqrt(c + b))
-        RIS[i] = c - d
-        ROS[i] = c + d
+        c = 2
+        RI [i] = np.floor(np.sqrt(a - b + c))
+        RO [i] = np.floor(np.sqrt(a + b + c))
+        RIS[i] = np.floor(a - b + c)
+        ROS[i] = np.floor(a + b + c)
 R_CALC()
 
 idx = lambda i,j: i*N - i*(i+1)//2 + (j-i)  # i<j
@@ -45,35 +46,32 @@ O = 0b00 # symbol 'O' (outer   ) 0
 
 def symmetric_set(M: np.ndarray, i: int, j: int, radius: int, symbol: np.uint8) -> None:
     """Ustawia symetryczne komórki w macierzy M."""
-    M[radius + i    , radius + j    ] = symbol
-    M[radius + i    , radius - j - 1] = symbol
-    M[radius - i - 1, radius + j    ] = symbol
-    M[radius - i - 1, radius - j - 1] = symbol
-    M[radius + j    , radius + i    ] = symbol
-    M[radius + j    , radius - i - 1] = symbol
-    M[radius - j - 1, radius + i    ] = symbol
-    M[radius - j - 1, radius - i - 1] = symbol
+    M[radius + i, radius + j] = symbol
+    M[radius + i, radius - j] = symbol
+    M[radius - i, radius + j] = symbol
+    M[radius - i, radius - j] = symbol
+    M[radius + j, radius + i] = symbol
+    M[radius + j, radius - i] = symbol
+    M[radius - j, radius + i] = symbol
+    M[radius - j, radius - i] = symbol
 
 @dataclass
 class DiscreteDisk:
     data: np.ndarray
-    pos: tuple[int, int]
-
+    x: int
+    y: int
+    
     @classmethod
-    def from_radius(cls, radius: int) -> "DiscreteDisk":
-        r = radius + 3
-        M = np.full((2 * r, 2 * r), I, dtype=np.uint8)
-        for x in range(r):
-            for y in range(x, r):
-                if DS[idx(x, y)] > ROS[radius]:
+    def disk(cls, radius: int = 4) -> "DiscreteDisk":
+        r = radius + 1  # radius + margin=floor(sqrt(2))
+        M = np.full((2 * r + 1, 2 * r + 1), I, dtype=np.uint8) # + 1 for 0
+        for x in range(r+1):
+            for y in range(x, r+1):
+                if DS[idx(x, y)] >= ROS[radius]:
                     symmetric_set(M, x, y, r, O)
                 elif DS[idx(x, y)] > RIS[radius]:
                     symmetric_set(M, x, y, r, B)
-        return cls(M, (-r, -r))
-
-    def shift(self, dx: int = 0, dy: int = 0) -> "DiscreteDisk":
-        self.pos = (self.pos[0] + dx, self.pos[1] + dy)
-        return self
+        return cls(M, -r, -r)
 
     def iter_points(self, types: tuple[np.uint8, ...] = (I, B)):
         """Iterate over points of selected types.
@@ -90,49 +88,51 @@ class DiscreteDisk:
             ``y`` increasing first and ``x`` increasing second.
         """
         h, w = self.data.shape
-        for j in range(h):
-            y = self.pos[1] + j
-            for i in range(w):
-                if self.data[j, i] in types:
-                    x = self.pos[0] + i
+        for iy in range(h):
+            y = self.y + iy
+            for ix in range(w):
+                if self.data[iy, ix] in types:
+                    x = self.x + ix
                     yield (x, y)
 
+    def shift(self, dx: int = 0, dy: int = 0) -> "DiscreteDisk":
+        self.x += dx
+        self.y += dy
+        return self
 
-def meet(A: DiscreteDisk, B: DiscreteDisk, shift_b: tuple[int, int] = (0, 0)) -> DiscreteDisk:
-    """Return ``A`` ⊓ ``B`` taking positions into account.
+    def connect(self, r: int, x: int, y: int) -> "DiscreteDisk":
+        """Limit area by & with a shifted disk, keeping current area and shape."""
+        b = DiscreteDisk.disk(r)
+        h, w = self.data.shape
 
-    Parameters
-    ----------
-    A, B : DiscreteDisk
-        Input disks. ``B`` can be additionally shifted by ``shift_b``.
-    shift_b : tuple[int, int], optional
-        Additional shift applied to ``B`` before intersection.
-    """
-    dx, dy = shift_b
-    b_pos = (B.pos[0] + dx, B.pos[1] + dy)
-    a_h, a_w = A.data.shape
-    b_h, b_w = B.data.shape
+        # Calculate relative position of b in self's coordinates
+        bx = b.x + x - self.x
+        by = b.y + y - self.y
 
-    min_row = min(A.pos[1], b_pos[1])
-    min_col = min(A.pos[0], b_pos[0])
-    max_row = max(A.pos[1] + a_h, b_pos[1] + b_h)
-    max_col = max(A.pos[0] + a_w, b_pos[0] + b_w)
+        # Find overlap region
+        iy0 = max(0, by)
+        iy1 = min(h, by + b.data.shape[0])
+        ix0 = max(0, bx)
+        ix1 = min(w, bx + b.data.shape[1])
+        
+        if iy0 >= iy1 or ix0 >= ix1:
+            # If no overlap, set all to outer
+            self.data[:, :] = O
+        else:
+            # Apply the intersection
+            self.data[iy0:iy1, ix0:ix1] &= b.data[:iy1 - iy0, :ix1 - ix0]
+            # Rest of the disk set to outer
+            self.data[:iy0, :] = O
+            self.data[iy1:, :] = O
+            self.data[:, :ix0] = O
+            self.data[:, ix1:] = O
 
-    height = max_row - min_row
-    width = max_col - min_col
+        # Return self for method chaining
+        return self
 
-    AA = np.full((height, width), O, dtype=np.uint8)
-    BB = np.full((height, width), O, dtype=np.uint8)
-
-    A_off_r = A.pos[1] - min_row
-    A_off_c = A.pos[0] - min_col
-    AA[A_off_r:A_off_r + a_h, A_off_c:A_off_c + a_w] = A.data
-
-    B_off_r = b_pos[1] - min_row
-    B_off_c = b_pos[0] - min_col
-    BB[B_off_r:B_off_r + b_h, B_off_c:B_off_c + b_w] = B.data
-
-    return DiscreteDisk(AA & BB, (min_col, min_row))
+    def is_all_points_O(self) -> bool:
+        """Check if all points are set to the outer type."""
+        return np.all(self.data == O)
 
 def show(M, symbol_map: np.ndarray = np.array(['◦', '▒', '?', '█'])) -> str:
     """Return an ASCII representation of the matrix or :class:`DiscreteDisk`."""
@@ -177,6 +177,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Discrete Disk Helper.")
 
     parser.add_argument(
+        "-r", "--radius", type=int, default=4,
+        help="Radius of the discrete disk (default: 4)"
+    )
+    parser.add_argument(
         "-p", "--print", action="store_true",
         help="Print area of the discrete disk")
     parser.add_argument(
@@ -195,34 +199,14 @@ if __name__ == "__main__":
     s = time.perf_counter() - s
     print(f"Time D_CALC: {s:.6f} seconds")
 
-    n = 32
-
     s = time.perf_counter()
-    a = DiscreteDisk.from_radius(n)
+    a = DiscreteDisk.disk(args.radius)
     s = time.perf_counter() - s
-    print(f"Time discrete_disk({n}): {s:.6f} seconds")
-
-    s = time.perf_counter()
-    b = meet(a, a, (16, 0))
-    s = time.perf_counter() - s
+    print(f"Time discrete_area({args.radius}): {s:.6f} seconds")
 
     if args.print:
-        print("A:")
         print(show(a))
 
-        print("A shift(2,3):")
-        print(show(a.shift(2, 3)))
-
-        print("A shift(-3,-4):")
-        print(show(a.shift(-3, -4)))
-
-        print("A shift(-3,-4) & A shift(2,3):")
-        print(show(meet(a.shift(-3, -4), a.shift(2, 3))))
-
-        print("A & A->(16,0):")
-        print(f"Time meet(a, a, (16, 0)): {s:.6f} seconds")
-        print(show(b))
-
     if args.display:
-        display(b)
+        display(a)
         plt.show()
