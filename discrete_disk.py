@@ -3,6 +3,23 @@ from dataclasses import dataclass
 import numpy as np
 import matplotlib.pyplot as plt
 import argparse
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
+
+O = 0 # symbol 'O' (outer   ) 0
+B = 1 # symbol 'B' (boundary) 1
+I = 2 # symbol 'I' (interior) 2
+
+ # kolejność kolumn:  b = O, B, I   (0,1,2)
+AND_TBL  = np.array([[O,O,O],   # a = O    a & b  b & a
+                     [O,B,B],   # a = B
+                     [O,B,I]],  # a = I
+                    dtype=np.uint8)
+ # kolejność kolumn:  b = O, B, I   (0,1,2)
+DIFF_TBL = np.array([[O,O,O],   # a = O    a \ b
+                     [B,B,O],   # a = B
+                     [I,B,O]],  # a = I
+                    dtype=np.uint8)
 
 N=2**8
 
@@ -39,10 +56,6 @@ def D_CALC():
         for j in range(i, N):
             DS[idx(i,j)] = i**2 + j**2
 D_CALC()
-
-I = 0b11 # symbol 'I' (interior) 3
-B = 0b01 # symbol 'B' (boundary) 1
-O = 0b00 # symbol 'O' (outer   ) 0
 
 def symmetric_set(M: np.ndarray, i: int, j: int, radius: int, symbol: np.uint8) -> None:
     """Ustawia symetryczne komórki w macierzy M."""
@@ -101,6 +114,12 @@ class DiscreteDisk:
         return self
 
     def connect(self, r: int, x: int, y: int) -> "DiscreteDisk":
+        return self.operation(AND_TBL, r, x, y)
+
+    def disconnect(self, r: int, x: int, y: int) -> "DiscreteDisk":
+        return self.operation(DIFF_TBL, r, x, y)
+
+    def operation(self, operation: np.ndarray, r: int, x: int, y: int) -> "DiscreteDisk":
         """Limit area by & with a shifted disk, keeping current area and shape."""
         b = DiscreteDisk.disk(r)
         h, w = self.data.shape
@@ -121,16 +140,20 @@ class DiscreteDisk:
         ibx1 = min(w, -bx + b.data.shape[1])
         
         if iay0 >= iay1 or iax0 >= iax1:
-            # If no overlap, set all to outer
-            self.data[:, :] = O
+            if operation is AND_TBL:
+                # If no overlap, set all to outer
+                self.data[:, :] = O
         else:
-            # Apply the intersection
-            self.data[iay0:iay1, iax0:iax1] &= b.data[iby0:iby1, ibx0:ibx1]
-            # Rest of the disk set to outer
-            self.data[:iay0, :] = O
-            self.data[iay1:, :] = O
-            self.data[:, :iax0] = O
-            self.data[:, iax1:] = O
+            # Apply the operation
+            asub = self.data[iay0:iay1, iax0:iax1]          # widok, nie kopia
+            bsub = b   .data[iby0:iby1, ibx0:ibx1]          # ten sam kształt co a
+            np.copyto(asub, operation[asub, bsub])          # zapis in-place
+            if operation is AND_TBL:
+                # Rest of the disk set to outer
+                self.data[:iay0, :] = O
+                self.data[iay1:, :] = O
+                self.data[:, :iax0] = O
+                self.data[:, iax1:] = O
 
         # Return self for method chaining
         return self
@@ -138,45 +161,49 @@ class DiscreteDisk:
     def is_all_points_O(self) -> bool:
         """Check if all points are set to the outer type."""
         return np.all(self.data == O)
+    
+    def get_relative(self, x: int, y: int) -> np.uint8:
+        h, w = self.data.shape
+        if x < 0 or x >= w or y < 0 or y >= h:
+            return O
+        return self.data(y, x)
+    
+    def get_absolute(self, x: int, y: int) -> np.uint8:
+        h, w = self.data.shape
+        x_relative = x - self.x
+        y_relative = y - self.y
+        if x_relative < 0 or x_relative >= w or y_relative < 0 or y_relative >= h:
+            return O
+        return self.data(y, x)
 
-def show(M, symbol_map: np.ndarray = np.array(['◦', '▒', '?', '█'])) -> str:
-    """Return an ASCII representation of the matrix or :class:`DiscreteDisk`."""
-    if isinstance(M, DiscreteDisk):
-        M = M.data
-    rows = [''.join(symbol_map[row]) for row in M[::-1]]
-    return '\n'.join(rows)
+    def show(self, symbol_map: np.ndarray = np.array(['◦', '▒', '█'])) -> str:
+        """Return an ASCII representation of the matrix or :class:`DiscreteDisk`."""
+        rows = [''.join(symbol_map[row]) for row in self.data[::-1]]
+        return '\n'.join(rows)
 
-def display(M, ax=None) -> "plt.Axes":
-    """Display the disk using :mod:`matplotlib`.
+    def display(self, ax=None) -> "plt.Axes":
+        """Display the disk using :mod:`matplotlib`.
 
-    Parameters
-    ----------
-    M : np.ndarray or DiscreteDisk
-        Matrix or :class:`DiscreteDisk` instance returned by
-        :func:`discrete_disk`.
-    ax : matplotlib.axes.Axes, optional
-        Target axes. If ``None``, a new figure and axes are created.
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes, optional
+            Target axes. If ``None``, a new figure and axes are created.
 
-    Returns
-    -------
-    matplotlib.axes.Axes
-        The axes with the rendered image.
-    """
-    import matplotlib.pyplot as plt
-    from matplotlib.colors import ListedColormap
+        Returns
+        -------
+        matplotlib.axes.Axes
+            The axes with the rendered image.
+        """
 
-    if ax is None:
-        _, ax = plt.subplots()
+        if ax is None:
+            _, ax = plt.subplots()
 
-    if isinstance(M, DiscreteDisk):
-        M = M.data
-
-    cmap = ListedColormap(['white', 'lightgray', 'red', 'black'])
-    ax.imshow(M[::-1], interpolation='nearest', cmap=cmap, vmin=0, vmax=3)
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.set_aspect('equal', adjustable='box')
-    return ax
+        cmap = ListedColormap(['white', 'lightgray', 'red', 'black'])
+        ax.imshow(self.data[::-1], interpolation='nearest', cmap=cmap, vmin=0, vmax=3)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_aspect('equal', adjustable='box')
+        return ax
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Discrete Disk Helper.")
