@@ -73,6 +73,66 @@ class TestDiscreteDisk(unittest.TestCase):
         ---===---
         """).rstrip("\n"))
 
+    def test_connect_disk_a(self):
+        d = DiscreteDisk.disk(3)
+        r = 4
+        e = DiscreteDisk.disk(3, -2, -1)
+        d.connect_disk(e)
+        self.assertEqual(d.data.shape, (2 * r + 1, 2 * r + 1))
+        self.assertEqual(d.x, -r)
+        self.assertEqual(d.y, -r)
+        self.assertEqual(d.show(TEST_SHOW), textwrap.dedent("""\
+        ---------
+        -===-----
+        -=====---
+        ======---
+        ===+===--
+        ===+===--
+        -======--
+        -=====---
+        ---===---
+        """).rstrip("\n"))
+
+    def test_connect_disk_b(self):
+        d = DiscreteDisk.disk(3, 2, 1)
+        r = 4
+        e = DiscreteDisk.disk(3)
+        d.connect_disk(e)
+        self.assertEqual(d.data.shape, (2 * r + 1, 2 * r + 1))
+        self.assertEqual(d.x, 2 - r)
+        self.assertEqual(d.y, 1 - r)
+        self.assertEqual(d.show(TEST_SHOW), textwrap.dedent("""\
+        ---------
+        -===-----
+        -=====---
+        ======---
+        ===+===--
+        ===+===--
+        -======--
+        -=====---
+        ---===---
+        """).rstrip("\n"))
+
+    def test_connect_disk_c(self):
+        d = DiscreteDisk.disk(3, 4, 5)
+        r = 4
+        e = DiscreteDisk.disk(3, 2, 4)
+        d.connect_disk(e)
+        self.assertEqual(d.data.shape, (2 * r + 1, 2 * r + 1))
+        self.assertEqual(d.x, 4 - r)
+        self.assertEqual(d.y, 5 - r)
+        self.assertEqual(d.show(TEST_SHOW), textwrap.dedent("""\
+        ---------
+        -===-----
+        -=====---
+        ======---
+        ===+===--
+        ===+===--
+        -======--
+        -=====---
+        ---===---
+        """).rstrip("\n"))
+
     def test_connect_c(self):
         d = DiscreteDisk.disk(3)
         r = 4

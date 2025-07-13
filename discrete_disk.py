@@ -116,17 +116,26 @@ class DiscreteDisk:
     def connect(self, r: int, x: int, y: int) -> "DiscreteDisk":
         return self.operation(AND_TBL, r, x, y)
 
-    def disconnect(self, r: int, x: int, y: int) -> "DiscreteDisk":
+    def connect_disk(self, b: "DiscreteDisk") -> "DiscreteDisk":
+        return self.operation_disk(AND_TBL, b)
+    
+    def disconnect(self, r: int, x: int = 0, y: int = 0) -> "DiscreteDisk":
         return self.operation(DIFF_TBL, r, x, y)
+
+    def disconnect_disk(self, b: "DiscreteDisk") -> "DiscreteDisk":
+        return self.operation_disk(DIFF_TBL, b)
 
     def operation(self, operation: np.ndarray, r: int, x: int, y: int) -> "DiscreteDisk":
         """Limit area by & with a shifted disk, keeping current area and shape."""
-        b = DiscreteDisk.disk(r)
+        return self.operation_disk(operation, DiscreteDisk.disk(r, x, y))
+
+    def operation_disk(self, operation: np.ndarray, b: "DiscreteDisk") -> "DiscreteDisk":
+        """Limit area by & with a shifted disk, keeping current area and shape."""
         h, w = self.data.shape
 
         # Calculate relative position of b in self's coordinates
-        bx = b.x + x - self.x
-        by = b.y + y - self.y
+        bx = b.x - self.x
+        by = b.y - self.y
 
         # Find overlap region
         iay0 = max(0, by)
