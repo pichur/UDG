@@ -1,9 +1,9 @@
 import time
-from dataclasses import dataclass
 import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 import matplotlib.pyplot as plt
+from dataclasses import dataclass
 from matplotlib.colors import ListedColormap
 
 O = 0 # symbol 'O' (outer   ) 0
@@ -237,8 +237,8 @@ if __name__ == "__main__":
     print(f"Time discrete_area({args.radius}): {s:.6f} seconds")
 
     if args.print:
-        print(show(a))
+        print(a.show())
 
     if args.display:
-        display(a)
+        a.display()
         plt.show()
