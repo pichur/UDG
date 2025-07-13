@@ -75,16 +75,16 @@ class DiscreteDisk:
     y: int
     
     @classmethod
-    def disk(cls, radius: int = 4) -> "DiscreteDisk":
+    def disk(cls, radius: int = 4, x: int = 0, y: int = 0) -> "DiscreteDisk":
         r = radius + 1  # radius + margin=floor(sqrt(2))
         M = np.full((2 * r + 1, 2 * r + 1), I, dtype=np.uint8) # + 1 for 0
-        for x in range(r+1):
-            for y in range(x, r+1):
-                if DS[idx(x, y)] >= ROS[radius]:
-                    symmetric_set(M, x, y, r, O)
-                elif DS[idx(x, y)] > RIS[radius]:
-                    symmetric_set(M, x, y, r, B)
-        return cls(M, -r, -r)
+        for ix in range(r+1):
+            for iy in range(ix, r+1):
+                if DS[idx(ix, iy)] >= ROS[radius]:
+                    symmetric_set(M, ix, iy, r, O)
+                elif DS[idx(ix, iy)] > RIS[radius]:
+                    symmetric_set(M, ix, iy, r, B)
+        return cls(M, x - r, y - r)
 
     def iter_points(self, types: tuple[np.uint8, ...] = (I, B)):
         """Iterate over points of selected types.

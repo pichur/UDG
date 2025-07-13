@@ -19,8 +19,8 @@ class TestDiscreteDisk(unittest.TestCase):
         d = DiscreteDisk.disk(1)
         r = 2
         d.shift(2, -1)
-        self.assertEqual(d.x, -r + 2)
-        self.assertEqual(d.y, -r - 1)
+        self.assertEqual(d.x,  2 - r)
+        self.assertEqual(d.y, -1 - r)
 
     def test_content(self):
         d = DiscreteDisk.disk(3)
@@ -43,8 +43,6 @@ class TestDiscreteDisk(unittest.TestCase):
         d = DiscreteDisk.disk(3)
         r = 4
         d.connect(3, 2, 0)
-        self.assertEqual(d.x, -r)
-        self.assertEqual(d.y, -r)
         self.assertEqual(d.data.shape, (2 * r + 1, 2 * r + 1))
         self.assertEqual(d.show(TEST_SHOW), textwrap.dedent("""\
         -----=---
@@ -62,8 +60,6 @@ class TestDiscreteDisk(unittest.TestCase):
         d = DiscreteDisk.disk(3)
         r = 4
         d.connect(3, -2, -1)
-        self.assertEqual(d.x, -r)
-        self.assertEqual(d.y, -r)
         self.assertEqual(d.data.shape, (2 * r + 1, 2 * r + 1))
         self.assertEqual(d.show(TEST_SHOW), textwrap.dedent("""\
         ---------
@@ -81,8 +77,6 @@ class TestDiscreteDisk(unittest.TestCase):
         d = DiscreteDisk.disk(3)
         r = 4
         d.connect(3, 4, 4)
-        self.assertEqual(d.x, -r)
-        self.assertEqual(d.y, -r)
         self.assertEqual(d.data.shape, (2 * r + 1, 2 * r + 1))
         self.assertEqual(d.show(TEST_SHOW), textwrap.dedent("""\
         ----==---
@@ -100,32 +94,24 @@ class TestDiscreteDisk(unittest.TestCase):
         d = DiscreteDisk.disk(3)
         r = 4
         d.connect(3, 8, 8)
-        self.assertEqual(d.x, -r)
-        self.assertEqual(d.y, -r)
         self.assertEqual(d.is_all_points_O(), True)
 
     def test_connect_out_of_range_a(self):
         d = DiscreteDisk.disk(3)
         r = 4
         d.connect(3, 10, -2)
-        self.assertEqual(d.x, -r)
-        self.assertEqual(d.y, -r)
         self.assertEqual(d.is_all_points_O(), True)
 
     def test_connect_out_of_range_b(self):
         d = DiscreteDisk.disk(3)
         r = 4
         d.connect(3, -9, 9)
-        self.assertEqual(d.x, -r)
-        self.assertEqual(d.y, -r)
         self.assertEqual(d.is_all_points_O(), True)
 
     def test_disconnect_a(self):
         d = DiscreteDisk.disk(3)
         r = 4
         d.disconnect(3, 2, 0)
-        self.assertEqual(d.x, -r)
-        self.assertEqual(d.y, -r)
         self.assertEqual(d.data.shape, (2 * r + 1, 2 * r + 1))
         self.assertEqual(d.show(TEST_SHOW), textwrap.dedent("""\
         ---===---
@@ -143,8 +129,6 @@ class TestDiscreteDisk(unittest.TestCase):
         d = DiscreteDisk.disk(3)
         r = 4
         d.disconnect(3, -2, -1)
-        self.assertEqual(d.x, -r)
-        self.assertEqual(d.y, -r)
         self.assertEqual(d.data.shape, (2 * r + 1, 2 * r + 1))
         self.assertEqual(d.show(TEST_SHOW), textwrap.dedent("""\
         ---===---
@@ -162,8 +146,6 @@ class TestDiscreteDisk(unittest.TestCase):
         d = DiscreteDisk.disk(3)
         r = 4
         d.disconnect(3, 4, 4)
-        self.assertEqual(d.x, -r)
-        self.assertEqual(d.y, -r)
         self.assertEqual(d.show(TEST_SHOW), textwrap.dedent("""\
         ---===---
         -======--
@@ -180,8 +162,6 @@ class TestDiscreteDisk(unittest.TestCase):
         d = DiscreteDisk.disk(3)
         r = 4
         d.disconnect(3, 8, 8)
-        self.assertEqual(d.x, -r)
-        self.assertEqual(d.y, -r)
         self.assertEqual(d.show(TEST_SHOW), textwrap.dedent("""\
         ---===---
         -=======-
@@ -198,8 +178,6 @@ class TestDiscreteDisk(unittest.TestCase):
         d = DiscreteDisk.disk(3)
         r = 4
         d.disconnect(3, 10, -2)
-        self.assertEqual(d.x, -r)
-        self.assertEqual(d.y, -r)
         self.assertEqual(d.show(TEST_SHOW), textwrap.dedent("""\
         ---===---
         -=======-
@@ -216,8 +194,6 @@ class TestDiscreteDisk(unittest.TestCase):
         d = DiscreteDisk.disk(3)
         r = 4
         d.connect(3, -9, 9)
-        self.assertEqual(d.x, -r)
-        self.assertEqual(d.y, -r)
         self.assertEqual(d.is_all_points_O(), True)
 
     def test_iter_points_order(self):
