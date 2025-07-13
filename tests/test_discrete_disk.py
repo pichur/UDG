@@ -59,20 +59,36 @@ class TestDiscreteDisk(unittest.TestCase):
         self.assertEqual(d.y, -r)
         self.assertEqual(d.data.shape, (2 * r + 1, 2 * r + 1))
         self.assertEqual(d.data[1, 0], O)
-        self.assertEqual(d.data[1, 1], O)
-        self.assertEqual(d.data[2, 2], O)
+        self.assertEqual(d.data[1, 1], B)
+        self.assertEqual(d.data[2, 2], B)
         self.assertEqual(d.data[2, 3], B)
-        self.assertEqual(d.data[3, 3], B)
-        self.assertEqual(d.data[3, 4], I)
+        self.assertEqual(d.data[3, 3], I)
+        self.assertEqual(d.data[3, 4], B)
         self.assertEqual(d.data[4, 5], B)
         self.assertEqual(d.data[4, 6], B)
-        self.assertEqual(d.data[5, 7], B)
-        self.assertEqual(d.data[5, 8], B)
+        self.assertEqual(d.data[5, 7], O)
+        self.assertEqual(d.data[5, 8], O)
 
-    def test_connect_out_of_range(self):
+    def test_connect_c(self):
         d = DiscreteDisk.disk(3)
         r = 4
-        d.connect(3, 5, -1)
+        d.connect(3, 8, 8)
+        self.assertEqual(d.x, -r)
+        self.assertEqual(d.y, -r)
+        self.assertEqual(d.is_all_points_O(), True)
+
+    def test_connect_out_of_range_a(self):
+        d = DiscreteDisk.disk(3)
+        r = 4
+        d.connect(3, 10, -2)
+        self.assertEqual(d.x, -r)
+        self.assertEqual(d.y, -r)
+        self.assertEqual(d.is_all_points_O(), True)
+
+    def test_connect_out_of_range_b(self):
+        d = DiscreteDisk.disk(3)
+        r = 4
+        d.connect(3, -9, 9)
         self.assertEqual(d.x, -r)
         self.assertEqual(d.y, -r)
         self.assertEqual(d.is_all_points_O(), True)
@@ -84,7 +100,7 @@ class TestDiscreteDisk(unittest.TestCase):
             (-1,  0), (0,  0), (1,  0),
             (-1,  1), (0,  1), (1,  1)
         ]
-        self.assertEqual(list(d.iter_points(I)), expected)
+        self.assertEqual(list(d.iter_points((I,))), expected)
 
 if __name__ == '__main__':
     unittest.main()

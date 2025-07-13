@@ -110,22 +110,27 @@ class DiscreteDisk:
         by = b.y + y - self.y
 
         # Find overlap region
-        iy0 = max(0, by)
-        iy1 = min(h, by + b.data.shape[0])
-        ix0 = max(0, bx)
-        ix1 = min(w, bx + b.data.shape[1])
+        iay0 = max(0, by)
+        iay1 = min(h, by + b.data.shape[0])
+        iax0 = max(0, bx)
+        iax1 = min(w, bx + b.data.shape[1])
+
+        iby0 = max(0, -by)
+        iby1 = min(h, -by + b.data.shape[0])
+        ibx0 = max(0, -bx)
+        ibx1 = min(w, -bx + b.data.shape[1])
         
-        if iy0 >= iy1 or ix0 >= ix1:
+        if iay0 >= iay1 or iax0 >= iax1:
             # If no overlap, set all to outer
             self.data[:, :] = O
         else:
             # Apply the intersection
-            self.data[iy0:iy1, ix0:ix1] &= b.data[:iy1 - iy0, :ix1 - ix0]
+            self.data[iay0:iay1, iax0:iax1] &= b.data[iby0:iby1, ibx0:ibx1]
             # Rest of the disk set to outer
-            self.data[:iy0, :] = O
-            self.data[iy1:, :] = O
-            self.data[:, :ix0] = O
-            self.data[:, ix1:] = O
+            self.data[:iay0, :] = O
+            self.data[iay1:, :] = O
+            self.data[:, :iax0] = O
+            self.data[:, iax1:] = O
 
         # Return self for method chaining
         return self
