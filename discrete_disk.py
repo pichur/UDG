@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 import matplotlib.pyplot as plt
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from matplotlib.colors import ListedColormap
 
 O = 0 # symbol 'O' (outer   ) 0
@@ -24,6 +24,8 @@ DIFF_TBL = np.array([[O,O,O],   # a = O    a \ b
 N=2**8
 
 DSQRT2 = 2*np.sqrt(2)
+
+_disk_cache: dict[int, np.ndarray] = {}
 
 def R_CALC():
     """Calculate the ranges for discrete disks."""
@@ -73,18 +75,24 @@ class DiscreteDisk:
     data: np.ndarray
     x: int
     y: int
+    _shared: bool = field(default=False, repr=False, compare=False)
     
     @classmethod
     def disk(cls, radius: int = 4, x: int = 0, y: int = 0) -> "DiscreteDisk":
         r = radius + 1  # radius + margin=floor(sqrt(2))
-        M = np.full((2 * r + 1, 2 * r + 1), I, dtype=np.uint8) # + 1 for 0
-        for ix in range(r+1):
-            for iy in range(ix, r+1):
-                if DS[idx(ix, iy)] >= ROS[radius]:
-                    symmetric_set(M, ix, iy, r, O)
-                elif DS[idx(ix, iy)] > RIS[radius]:
-                    symmetric_set(M, ix, iy, r, B)
-        return cls(M, x - r, y - r)
+        if radius not in _disk_cache:
+            M = np.full((2 * r + 1, 2 * r + 1), I, dtype=np.uint8)  # + 1 for 0
+            for ix in range(r + 1):
+                for iy in range(ix, r + 1):
+                    if DS[idx(ix, iy)] >= ROS[radius]:
+                        symmetric_set(M, ix, iy, r, O)
+                    elif DS[idx(ix, iy)] > RIS[radius]:
+                        symmetric_set(M, ix, iy, r, B)
+            M.setflags(write=False)
+            _disk_cache[radius] = M
+        else:
+            M = _disk_cache[radius]
+        return cls(M, x - r, y - r, True)
 
     def points_iter(self, types: tuple[np.uint8, ...] = (I, B)):
         """Iterate over points of selected types.
@@ -134,6 +142,11 @@ class DiscreteDisk:
 
     def operation_disk(self, operation: np.ndarray, b: "DiscreteDisk") -> "DiscreteDisk":
         """Limit area by & with a shifted disk, keeping current area and shape."""
+        if self._shared:
+            self.data = self.data.copy()
+            self.data.setflags(write=True)
+            self._shared = False
+
         h, w = self.data.shape
 
         # Calculate relative position of b in self's coordinates
