@@ -86,7 +86,7 @@ class DiscreteDisk:
                     symmetric_set(M, ix, iy, r, B)
         return cls(M, x - r, y - r)
 
-    def iter_points(self, types: tuple[np.uint8, ...] = (I, B)):
+    def points_iter(self, types: tuple[np.uint8, ...] = (I, B)):
         """Iterate over points of selected types.
 
         Parameters
@@ -107,6 +107,9 @@ class DiscreteDisk:
                 if self.data[iy, ix] in types:
                     x = self.x + ix
                     yield (x, y)
+
+    def points_list(self, types: tuple[np.uint8, ...] = (I, B)) -> list:
+        return list(self.points_iter(types))
 
     def shift(self, dx: int = 0, dy: int = 0) -> "DiscreteDisk":
         self.x += dx

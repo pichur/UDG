@@ -263,7 +263,7 @@ class TestDiscreteDisk(unittest.TestCase):
             (-1,  0), (0,  0), (1,  0),
             (-1,  1), (0,  1), (1,  1)
         ]
-        self.assertEqual(list(d.iter_points((I,))), expected)
+        self.assertEqual(d.points_list((I,)), expected)
 
 if __name__ == '__main__':
     unittest.main()
