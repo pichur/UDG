@@ -3,22 +3,24 @@ import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 import matplotlib.pyplot as plt
+from typing import NamedTuple
 from dataclasses import dataclass, field
 from matplotlib.colors import ListedColormap
 
-O = 0 # symbol 'O' (outer   ) 0
-B = 1 # symbol 'B' (boundary) 1
-I = 2 # symbol 'I' (interior) 2
+MODE_O = 0 # symbol 'O' (outer   ) 0
+MODE_B = 1 # symbol 'B' (boundary) 1
+MODE_I = 2 # symbol 'I' (interior) 2
+MODE_U = 3 # symbol 'U' (unknown ) 3
 
  # kolejność kolumn:  b = O, B, I   (0,1,2)
-AND_TBL  = np.array([[O,O,O],   # a = O    a & b  b & a
-                     [O,B,B],   # a = B
-                     [O,B,I]],  # a = I
+TBL_AND  = np.array([[MODE_O,MODE_O,MODE_O],   # a = O    a & b  b & a
+                     [MODE_O,MODE_B,MODE_B],   # a = B
+                     [MODE_O,MODE_B,MODE_I]],  # a = I
                     dtype=np.uint8)
  # kolejność kolumn:  b = O, B, I   (0,1,2)
-DIFF_TBL = np.array([[O,O,O],   # a = O    a \ b
-                     [B,B,O],   # a = B
-                     [I,B,O]],  # a = I
+TBL_DIFF = np.array([[MODE_O,MODE_O,MODE_O],   # a = O    a \ b
+                     [MODE_B,MODE_B,MODE_O],   # a = B
+                     [MODE_I,MODE_B,MODE_O]],  # a = I
                     dtype=np.uint8)
 
 N=2**8
@@ -70,6 +72,11 @@ def symmetric_set(M: np.ndarray, i: int, j: int, radius: int, symbol: np.uint8) 
     M[radius - j, radius + i] = symbol
     M[radius - j, radius - i] = symbol
 
+class Coordinate(NamedTuple):
+    x: np.int64
+    y: np.int64
+    type: np.uint8
+
 @dataclass
 class DiscreteDisk:
     data: np.ndarray
@@ -81,20 +88,20 @@ class DiscreteDisk:
     def disk(cls, radius: int = 4, x: int = 0, y: int = 0) -> "DiscreteDisk":
         r = radius + 1  # radius + margin=floor(sqrt(2))
         if radius not in _disk_cache:
-            M = np.full((2 * r + 1, 2 * r + 1), I, dtype=np.uint8)  # + 1 for 0
+            M = np.full((2 * r + 1, 2 * r + 1), MODE_I, dtype=np.uint8)  # + 1 for 0
             for ix in range(r + 1):
                 for iy in range(ix, r + 1):
                     if DS[idx(ix, iy)] >= ROS[radius]:
-                        symmetric_set(M, ix, iy, r, O)
+                        symmetric_set(M, ix, iy, r, MODE_O)
                     elif DS[idx(ix, iy)] > RIS[radius]:
-                        symmetric_set(M, ix, iy, r, B)
+                        symmetric_set(M, ix, iy, r, MODE_B)
             M.setflags(write=False)
             _disk_cache[radius] = M
         else:
             M = _disk_cache[radius]
         return cls(M, x - r, y - r, True)
 
-    def points_iter(self, types: tuple[np.uint8, ...] = (I, B)):
+    def points_iter(self, types: tuple[np.uint8, ...] = (MODE_I, MODE_B)):
         """Iterate over points of selected types.
 
         Parameters
@@ -114,9 +121,9 @@ class DiscreteDisk:
             for ix in range(w):
                 if self.data[iy, ix] in types:
                     x = self.x + ix
-                    yield (x, y)
+                    yield Coordinate(x, y, self.data[iy, ix])
 
-    def points_list(self, types: tuple[np.uint8, ...] = (I, B)) -> list:
+    def points_list(self, types: tuple[np.uint8, ...] = (MODE_I, MODE_B)) -> list[Coordinate]:
         return list(self.points_iter(types))
 
     def shift(self, dx: int = 0, dy: int = 0) -> "DiscreteDisk":
@@ -125,16 +132,16 @@ class DiscreteDisk:
         return self
 
     def connect(self, r: int, x: int, y: int) -> "DiscreteDisk":
-        return self.operation(AND_TBL, r, x, y)
+        return self.operation(TBL_AND, r, x, y)
 
     def connect_disk(self, b: "DiscreteDisk") -> "DiscreteDisk":
-        return self.operation_disk(AND_TBL, b)
+        return self.operation_disk(TBL_AND, b)
     
     def disconnect(self, r: int, x: int = 0, y: int = 0) -> "DiscreteDisk":
-        return self.operation(DIFF_TBL, r, x, y)
+        return self.operation(TBL_DIFF, r, x, y)
 
     def disconnect_disk(self, b: "DiscreteDisk") -> "DiscreteDisk":
-        return self.operation_disk(DIFF_TBL, b)
+        return self.operation_disk(TBL_DIFF, b)
 
     def operation(self, operation: np.ndarray, r: int, x: int, y: int) -> "DiscreteDisk":
         """Limit area by & with a shifted disk, keeping current area and shape."""
@@ -165,32 +172,32 @@ class DiscreteDisk:
         ibx1 = min(w, -bx + b.data.shape[1])
         
         if iay0 >= iay1 or iax0 >= iax1:
-            if operation is AND_TBL:
+            if operation is TBL_AND:
                 # If no overlap, set all to outer
-                self.data[:, :] = O
+                self.data[:, :] = MODE_O
         else:
             # Apply the operation
             asub = self.data[iay0:iay1, iax0:iax1]          # widok, nie kopia
             bsub = b   .data[iby0:iby1, ibx0:ibx1]          # ten sam kształt co a
             np.copyto(asub, operation[asub, bsub])          # zapis in-place
-            if operation is AND_TBL:
+            if operation is TBL_AND:
                 # Rest of the disk set to outer
-                self.data[:iay0, :] = O
-                self.data[iay1:, :] = O
-                self.data[:, :iax0] = O
-                self.data[:, iax1:] = O
+                self.data[:iay0, :] = MODE_O
+                self.data[iay1:, :] = MODE_O
+                self.data[:, :iax0] = MODE_O
+                self.data[:, iax1:] = MODE_O
 
         # Return self for method chaining
         return self
 
     def is_all_points_O(self) -> bool:
         """Check if all points are set to the outer type."""
-        return np.all(self.data == O)
+        return np.all(self.data == MODE_O)
     
     def get_relative(self, x: int, y: int) -> np.uint8:
         h, w = self.data.shape
         if x < 0 or x >= w or y < 0 or y >= h:
-            return O
+            return MODE_O
         return self.data(y, x)
     
     def get_absolute(self, x: int, y: int) -> np.uint8:
@@ -198,7 +205,7 @@ class DiscreteDisk:
         x_relative = x - self.x
         y_relative = y - self.y
         if x_relative < 0 or x_relative >= w or y_relative < 0 or y_relative >= h:
-            return O
+            return MODE_O
         return self.data(y, x)
 
     def show(self, symbol_map: np.ndarray = np.array(['◦', '▒', '█'])) -> str:

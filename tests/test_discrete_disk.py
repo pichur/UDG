@@ -3,7 +3,7 @@ import os, sys
 import textwrap
 import numpy as np
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from discrete_disk import DiscreteDisk, I, B, O
+from discrete_disk import DiscreteDisk, Coordinate, MODE_I, MODE_B, MODE_O
 
 TEST_SHOW = np.array(['-', '=', '+'])
 
@@ -256,14 +256,40 @@ class TestDiscreteDisk(unittest.TestCase):
         d.connect(3, -9, 9)
         self.assertEqual(d.is_all_points_O(), True)
 
+    def test_iter_points(self):
+        d = DiscreteDisk.disk(3)
+        p = d.points_list()
+
+        # MODE_O
+        self.assertNotIn(Coordinate(4, 2, MODE_O), p)
+        self.assertNotIn(Coordinate(4, 2, MODE_B), p)
+        self.assertNotIn(Coordinate(4, 2, MODE_I), p)
+
+        # MODE_B
+        self.assertNotIn(Coordinate(3, -3, MODE_O), p)
+        self.assertIn   (Coordinate(3, -3, MODE_B), p)
+        self.assertNotIn(Coordinate(3, -3, MODE_I), p)
+
+        # MODE_I
+        self.assertNotIn(Coordinate(-1, 0, MODE_O), p)
+        self.assertNotIn(Coordinate(-1, 0, MODE_B), p)
+        self.assertIn   (Coordinate(-1, 0, MODE_I), p)
+
+        expected = [
+            Coordinate(-1, -1, MODE_I), Coordinate(0, -1, MODE_I), Coordinate(1, -1, MODE_I),
+            Coordinate(-1,  0, MODE_I), Coordinate(0,  0, MODE_I), Coordinate(1,  0, MODE_I),
+            Coordinate(-1,  1, MODE_I), Coordinate(0,  1, MODE_I), Coordinate(1,  1, MODE_I)
+        ]
+        self.assertEqual(d.points_list((MODE_I,)), expected)
+
     def test_iter_points_order(self):
         d = DiscreteDisk.disk(3)
         expected = [
-            (-1, -1), (0, -1), (1, -1),
-            (-1,  0), (0,  0), (1,  0),
-            (-1,  1), (0,  1), (1,  1)
+            Coordinate(-1, -1, MODE_I), Coordinate(0, -1, MODE_I), Coordinate(1, -1, MODE_I),
+            Coordinate(-1,  0, MODE_I), Coordinate(0,  0, MODE_I), Coordinate(1,  0, MODE_I),
+            Coordinate(-1,  1, MODE_I), Coordinate(0,  1, MODE_I), Coordinate(1,  1, MODE_I)
         ]
-        self.assertEqual(d.points_list((I,)), expected)
+        self.assertEqual(d.points_list((MODE_I,)), expected)
 
 if __name__ == '__main__':
     unittest.main()

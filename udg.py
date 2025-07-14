@@ -9,11 +9,17 @@ import Graph6Converter
 import numpy as np
 import matplotlib.pyplot as plt
 import discrete_disk
-from discrete_disk import DiscreteDisk
+from discrete_disk import DiscreteDisk, Coordinate, MODE_U
 
 class Graph:
     """Simple adjacency list graph that can be built from an integer number
     of vertices or from a :class:`networkx.Graph` instance."""
+    verbose: bool
+    n: int
+    adj: list[list[int]]
+    coordinates: list[Coordinate]
+    order: list[int]
+    unit: int
 
     def __init__(self, n_or_g):
         if isinstance(n_or_g, int):
@@ -31,7 +37,12 @@ class Graph:
         self.verbose = False
 
         # store vertex coordinates and additional parameters
-        self.vertices = np.recarray(shape = self.n, dtype= [('x', 'int64'),('y', 'int64')])
+        self.coordinates = [
+            Coordinate(np.int64(0), np.int64(0), MODE_U)
+            for _ in range(self.n)
+        ]
+
+        self.order = range(self.n)
 
         self.set_unit(1)
         
@@ -204,13 +215,13 @@ class Graph:
         return (self.eps << 10) > self.unit
     
     def has_discrete_realization(self):
-        order = self.work_order()
-        result = self.place_next_vertex(order, 0)
+        self.calculate_order()
+        result = self.place_next_vertex(0)
         return result
 
-    def place_next_vertex(self, order, j: int):
-        v = order[j]
-        P = self.candidate_points(order, j)
+    def place_next_vertex(self, j: int):
+        v = self.order[j]
+        P = self.candidate_points(j)
 
         found_trigraph = False
         for p in P:
@@ -220,7 +231,7 @@ class Graph:
                     self.last_verbose_time = time.time()
                     print("  placing " + self.state_info())
             if j < self.n - 1:
-                result = self.place_next_vertex(order, j+1)
+                result = self.place_next_vertex(j + 1)
                 if result == YES:
                     return YES
                 if result == TRIGRAPH_ONLY:
@@ -247,6 +258,7 @@ class Graph:
 #         self.apply_granularity()
 
     def apply_granularity(self):
+        # TODO is this need?
         self.eps_sqrt2 = self.eps * SQRT_2
         self.r_in      = self.unit - self.eps_sqrt2
         self.r_out     = self.unit + self.eps_sqrt2
@@ -254,6 +266,7 @@ class Graph:
         self.r_out_sq  = self.unit_sq + 2 * self.eps_sqrt2 * self.unit + 2 * self.eps
 
     def candidate_points(self, order, j: int):
+        # TODO return point with info about I/B
         P = []
         if j == 0:
             P.append((0, 0))
@@ -263,35 +276,35 @@ class Graph:
                 P.append((x, 0))
             return P
         if j == 2:
-            v1 = self.vertices[order[1]]
+            v1 = self.vertices[self.order[1]]
             dd = DiscreteDisk.disk(self.unit, x = v1.x, y = v1.y) # connected to previous (1) vertex
             dd.disconnect(r=self.unit, x = 0, y = 0) # disconnected from fisrt (0) vertex
             P = [p for p in dd.points_iter() if p[1] >= 0]
             return P
 
-        v = order[j]
-        neighs    = [order[k] for k in range(j) if order[k]     in self.neighbors(v)]
-        nonneighs = [order[k] for k in range(j) if order[k] not in self.neighbors(v)]
+        v = self.order[j]
+        neighs    = [self.order[k] for k in range(j) if self.order[k]     in self.neighbors(v)]
+        nonneighs = [self.order[k] for k in range(j) if self.order[k] not in self.neighbors(v)]
 
         if not neighs:
             raise ValueError("Missing neighborhoot for vertex " + v)
         
         it = iter(neighs)
         first = next(it)
-        v = order[first]
+        v = self.vertices[first]
         dd = DiscreteDisk.disk(self.unit, x = v.x, y = v.y)
         for i in it:
-            v = order[i]
+            v = self.vertices[i]
             dd.connect(self.unit, x = v.x, y = v.y)
 
         for i in nonneighs:
-            v = order[i]
+            v = self.vertices[i]
             dd.disconnect(self.unit, x = v.x, y = v.y)
 
         return dd.points_list
 
-    def work_order(self):
-        """Return a work order of the graph starting from any p3 inducted subgraph."""
+    def calculate_order(self):
+        """Calculate a work order of the graph starting from any p3 inducted subgraph."""
         # Find a P3 (path of length 2) induced subgraph: vertices 0-1-2 such that
         # 0-1 and 1-2 are edges, but 0-2 is not an edge.
         for v0 in range(self.n):
@@ -302,7 +315,7 @@ class Graph:
                     if not self.is_edge(v0, v2):
                         # Found P3: v0-v1-v2
                         visited = [False] * self.n
-                        order = [v0, v1, v2]
+                        self.order = [v0, v1, v2]
                         visited[v0] = visited[v1] = visited[v2] = True
                         q = deque([v0, v1, v2])
                         while q:
@@ -310,9 +323,8 @@ class Graph:
                             for w in self.neighbors(v):
                                 if not visited[w]:
                                     visited[w] = True
-                                    order.append(w)
+                                    self.order.append(w)
                                     q.append(w)
-                        return order
 
 #     def dist_gte_r_out(self, p1, p2):
 #         dp2 = dist_p2(p1,p2)
