@@ -8,6 +8,8 @@ import time
 import Graph6Converter
 import numpy as np
 import matplotlib.pyplot as plt
+import discrete_disk
+from discrete_disk import DiscreteDisk
 
 class Graph:
     """Simple adjacency list graph that can be built from an integer number
@@ -70,7 +72,7 @@ class Graph:
     def set_unit(self, unit: int):
         """Set the unit disk radius for the graph."""
         self.unit = unit
-        self.unit_squared = self.unit * self.unit
+        self.unit_sq = self.unit * self.unit
         #if hasattr(self, "eps"):
         #    self.apply_granularity()
         return self
@@ -94,16 +96,17 @@ class Graph:
             for j in range(i + 1, self.n):
                 e = self.is_edge(i, j)
                 edisp = "E" if e else " "
-                d_squared = self.vertex_distance_squared(i, j)
-                dlter = d_squared <= self.unit_squared
+                d_sq = self.vertex_distance_squared(i, j)
+                dlter = d_sq <= self.unit_sq
                 comp = "<=" if dlter else "> "
-                d = sqrt(d_squared)
+                d = sqrt(d_sq)
                 if (print_edges):
                     print(f"  {edisp} dist({i},{j}) {d:10.3f} {comp} {self.unit:7d} ")
                 if not fail:
                     fail = (e and not dlter) or (not e and dlter)
         if fail:
             print("FAIL: some edges are not in the unit disk range or some non-edges are in the range.")
+
     def draw(self, draw_disks: bool = False, ax=None):
         colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
         if ax is None:
@@ -137,138 +140,179 @@ class Graph:
         ax.set_aspect("equal", adjustable="datalim")
         return ax
 
-#     def udg_recognition(self, initial_epsilon=0.7):
-#         self.start_time = time.time()
-#         self.last_verbose_time = self.start_time
-#         self.eps = initial_epsilon
-#         self.apply_granularity()
-#         while True:
-#             if self.verbose:
-#                 print(f"Checking epsilon: {self.eps}")
-#             result = self.has_discrete_realization()
-#             if result == YES:
-#                 self.stop_time = time.time()
-#                 return True
-#             if result == NO:
-#                 self.stop_time = time.time()
-#                 return False
-#             if self.eps <= self.eps_min:
-#                 self.stop_time = time.time()
-#                 if self.verbose:
-#                     print("Reached minimum epsilon, no realization found.")
-#                 return False
-            
-#             self.refine_granularity()
+    def udg_recognition(self, initial_epsilon=1):
+        self.start_time = time.time()
+        self.last_verbose_time = self.start_time
 
-#     def has_discrete_realization(self):
-#         psi_coords_array = [None]*self.n
-#         pi_permutation_order = self.bfs_order()
-#         result = self.place_next_vertex(pi_permutation_order, 0, psi_coords_array)
-#         return result
+        if not self.is_connected():
+            self.stop_time = time.time()
+            if self.verbose:
+                print("Graph is not connected, cannot be a UDG.")
+            return False
+
+        if self.is_full():
+            self.stop_time = time.time()
+            if self.verbose:
+                print("Graph is full, it is a UDG.")
+            return True
+        
+        self.eps = initial_epsilon
+        self.apply_granularity()
+
+        while True:
+            if self.verbose:
+                print(f"Checking unit: {self.unit} epsilon: {self.eps}")
+            result = self.has_discrete_realization()
+            if result == YES:
+                self.stop_time = time.time()
+                return True
+            if result == NO:
+                self.stop_time = time.time()
+                return False
+            if self.min_eps():
+                self.stop_time = time.time()
+                if self.verbose:
+                    print("Reached minimum epsilon, no realization found.")
+                return False
+
+            self.refine_granularity()
     
-#     def place_next_vertex(self, pi_permutation_order, j: int, psi_coords_array):
-#         v = pi_permutation_order[j]
-#         P = self.candidate_points(pi_permutation_order, j, psi_coords_array)
-#         if j == 0:
-#             P = [(0.0, 0.0)]
-#         if j == 1:
-#             P = [p for p in P if abs(p[1]) < 1e-9 and p[1] > -1e-9]
-#             if not P:
-#                 P = [(self.eps, 0)]
-#         if j == 2:
-#             P = [p for p in P if p[0] >= -1e-9]
-#             if not P:
-#                 P = [(0.0, self.eps)]
+    def is_connected(self):
+        """Check if the graph is connected using a simple BFS."""
+        visited = [False] * self.n
+        queue = deque([0])
+        visited[0] = True
+        while queue:
+            v = queue.popleft()
+            for neighbor in self.neighbors(v):
+                if not visited[neighbor]:
+                    visited[neighbor] = True
+                    queue.append(neighbor)
+        return all(visited)
+    
+    def is_full(self):
+        """Check if the graph is a full."""
+        for u in range(self.n):
+            for v in range(u + 1, self.n):
+                if not self.has_edge(u, v):
+                    return False
+        return True
 
-#         found_trigraph = False
-#         for p in P:
-#             psi_coords_array[v] = p
-#             if self.verbose:
-#                 if time.time() - self.last_verbose_time > 10:
-#                     self.last_verbose_time = time.time()
-#                     print("  placing " + str(psi_coords_array))
-#             if j < self.n - 1:
-#                 result = self.place_next_vertex(pi_permutation_order, j+1, psi_coords_array)
-#                 if result == YES:
-#                     return YES
-#                 if result == TRIGRAPH_ONLY:
-#                     found_trigraph=True
-#             else:
-#                 found_trigraph = True
-#                 if self.is_udg_realization(psi_coords_array):
-#                     return YES
+    def min_eps(self):
+        """Check if the current epsilon is below the minimum threshold."""
+        # temp
+        return (self.eps << 10) > self.unit
+    
+    def has_discrete_realization(self):
+        order = self.work_order()
+        result = self.place_next_vertex(order, 0)
+        return result
+
+    def place_next_vertex(self, order, j: int):
+        v = order[j]
+        P = self.candidate_points(order, j)
+
+        found_trigraph = False
+        for p in P:
+            self.set_coordinate(v, p[0], p[1])
+            if self.verbose:
+                if time.time() - self.last_verbose_time > 10:
+                    self.last_verbose_time = time.time()
+                    print("  placing " + self.state_info())
+            if j < self.n - 1:
+                result = self.place_next_vertex(order, j+1)
+                if result == YES:
+                    return YES
+                if result == TRIGRAPH_ONLY:
+                    found_trigraph=True
+            else:
+                found_trigraph = True
+                if self.is_udg_realization():
+                    return YES
         
-#         if not found_trigraph:
-#             return NO
-        
-#         return TRIGRAPH_ONLY
+        if not found_trigraph:
+            return NO
+
+        return TRIGRAPH_ONLY
+    
+    def state_info(self) -> str:
+        return "TODO"
+    
+    def is_udg_realization(self) -> bool:
+        print("TODO")
+        return True
     
 #     def refine_granularity(self):
 #         self.eps = max(self.eps / 2, self.eps_min)
 #         self.apply_granularity()
 
-#     def apply_granularity(self):
-#         self.eps_sqrt2 = self.eps * SQRT_2
-#         self.r_in      = 1 - self.eps_sqrt2
-#         self.r_out     = 1 + self.eps_sqrt2
-#         self.r_in_p2   = 1 - 2 * self.eps_sqrt2 + 2 * self.eps**2
-#         self.r_out_p2  = 1 + 2 * self.eps_sqrt2 + 2 * self.eps**2
+    def apply_granularity(self):
+        self.eps_sqrt2 = self.eps * SQRT_2
+        self.r_in      = self.unit - self.eps_sqrt2
+        self.r_out     = self.unit + self.eps_sqrt2
+        self.r_in_sq   = self.unit_sq - 2 * self.eps_sqrt2 * self.unit + 2 * self.eps
+        self.r_out_sq  = self.unit_sq + 2 * self.eps_sqrt2 * self.unit + 2 * self.eps
 
-#     def candidate_points(self, pi_permutation_order, j: int, psi_coords_array):
-#         v = pi_permutation_order[j]
-#         neighs    = [pi_permutation_order[k] for k in range(j) if pi_permutation_order[k]     in self.neighbors(v)]
-#         nonneighs = [pi_permutation_order[k] for k in range(j) if pi_permutation_order[k] not in self.neighbors(v)]
+    def candidate_points(self, order, j: int):
+        P = []
+        if j == 0:
+            P.append((0, 0))
+            return P
+        if j == 1:
+            for x in range(0, discrete_disk.RO[self.unit]):
+                P.append((x, 0))
+            return P
+        if j == 2:
+            v1 = self.vertices[order[1]]
+            dd = DiscreteDisk.disk(self.unit, x = v1.x, y = v1.y) # connected to previous (1) vertex
+            dd.disconnect(r=self.unit, x = 0, y = 0) # disconnected from fisrt (0) vertex
+            P = [p for p in dd.points_iter() if p[1] >= 0]
+            return P
 
-#         if not neighs:
-#             x_min = -self.r_out
-#             x_max =  self.r_out
-#             y_min = -self.r_out
-#             y_max =  self.r_out
-#         else:
-#             x_min = max(psi_coords_array[n][0] - self.r_out for n in neighs)
-#             x_max = min(psi_coords_array[n][0] + self.r_out for n in neighs)
-#             y_min = max(psi_coords_array[n][1] - self.r_out for n in neighs)
-#             y_max = min(psi_coords_array[n][1] + self.r_out for n in neighs)
+        v = order[j]
+        neighs    = [order[k] for k in range(j) if order[k]     in self.neighbors(v)]
+        nonneighs = [order[k] for k in range(j) if order[k] not in self.neighbors(v)]
+
+        if not neighs:
+            raise ValueError("Missing neighborhoot for vertex " + v)
         
-#         if x_min > x_max or y_min > y_max:
-#             return []
-        
-#         points = []
-#         start_x = int(round(x_min/self.eps))
-#         end_x   = int(round(x_max/self.eps))
-#         start_y = int(round(y_min/self.eps))
-#         end_y   = int(round(y_max/self.eps))
-#         for ix in range(start_x, end_x+1):
-#             for iy in range(start_y, end_y+1):
-#                 p = (ix*self.eps, iy*self.eps)
-#                 good = True
-#                 for n in neighs:
-#                     if self.dist_gte_r_out(p, psi_coords_array[n]):
-#                         good=False
-#                         break
-#                 if not good:
-#                     continue
-#                 for n in nonneighs:
-#                     if self.dist_lte_r_in(p, psi_coords_array[n]):
-#                         good=False
-#                         break
-#                 if good:
-#                     points.append(p)
-#         return points
+        it = iter(neighs)
+        first = next(it)
+        v = order[first]
+        dd = DiscreteDisk.disk(self.unit, x = v.x, y = v.y)
+        for i in it:
+            v = order[i]
+            dd.connect(self.unit, x = v.x, y = v.y)
 
-#     def bfs_order(self):
-#         visited = [False] * self.n
-#         order = []
-#         q = deque([0])
-#         visited[0] = True
-#         while q:
-#             v = q.popleft()
-#             order.append(v)
-#             for w in self.neighbors(v):
-#                 if not visited[w]:
-#                     visited[w] = True
-#                     q.append(w)
-#         return order
+        for i in nonneighs:
+            v = order[i]
+            dd.disconnect(self.unit, x = v.x, y = v.y)
+
+        return dd.points_list
+
+    def work_order(self):
+        """Return a work order of the graph starting from any p3 inducted subgraph."""
+        # Find a P3 (path of length 2) induced subgraph: vertices 0-1-2 such that
+        # 0-1 and 1-2 are edges, but 0-2 is not an edge.
+        for v0 in range(self.n):
+            for v1 in self.neighbors(v0):
+                for v2 in self.neighbors(v1):
+                    if v2 == v0:
+                        continue
+                    if not self.is_edge(v0, v2):
+                        # Found P3: v0-v1-v2
+                        visited = [False] * self.n
+                        order = [v0, v1, v2]
+                        visited[v0] = visited[v1] = visited[v2] = True
+                        q = deque([v0, v1, v2])
+                        while q:
+                            v = q.popleft()
+                            for w in self.neighbors(v):
+                                if not visited[w]:
+                                    visited[w] = True
+                                    order.append(w)
+                                    q.append(w)
+                        return order
 
 #     def dist_gte_r_out(self, p1, p2):
 #         dp2 = dist_p2(p1,p2)
