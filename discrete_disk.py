@@ -1,9 +1,7 @@
 import time
 import numpy as np
-import matplotlib.pyplot as plt
 import argparse
 import matplotlib.pyplot as plt
-from typing import NamedTuple
 from dataclasses import dataclass, field
 from matplotlib.colors import ListedColormap
 
@@ -11,6 +9,8 @@ MODE_O = 0 # symbol 'O' (outer   ) 0
 MODE_B = 1 # symbol 'B' (boundary) 1
 MODE_I = 2 # symbol 'I' (interior) 2
 MODE_U = 3 # symbol 'U' (unknown ) 3
+
+MODES = ['O', 'B', 'I', '?']
 
  # kolejność kolumn:  b = O, B, I   (0,1,2)
 TBL_AND  = np.array([[MODE_O,MODE_O,MODE_O],   # a = O    a & b  b & a
@@ -72,10 +72,11 @@ def symmetric_set(M: np.ndarray, i: int, j: int, radius: int, symbol: np.uint8) 
     M[radius - j, radius + i] = symbol
     M[radius - j, radius - i] = symbol
 
-class Coordinate(NamedTuple):
-    x: np.int64
-    y: np.int64
-    type: np.uint8
+@dataclass(slots=True)
+class Coordinate:
+    x: int
+    y: int
+    mode: np.uint8
 
 @dataclass
 class DiscreteDisk:
@@ -191,7 +192,7 @@ class DiscreteDisk:
         return self
 
     def is_all_points_O(self) -> bool:
-        """Check if all points are set to the outer type."""
+        """Check if all points are set to the outer mode."""
         return np.all(self.data == MODE_O)
     
     def get_relative(self, x: int, y: int) -> np.uint8:

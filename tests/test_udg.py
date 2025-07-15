@@ -5,11 +5,9 @@ import Graph6Converter
 
 class TestUDG(unittest.TestCase):
     
-    @unittest.skip("Test disabled")
     def test_udg_3(self):
         self._check_udg(['3:1,2;2,3;3,1'], True)
     
-    @unittest.skip("Test disabled")
     def test_udg_4(self):
         self._check_udg([
             '4:1,2;2,3;3,4',
@@ -37,8 +35,12 @@ class TestUDG(unittest.TestCase):
             ], False)
         
     def _check_udg(self, graphs: list[str], expected: bool):
+        print()
+        i = 0
+        l = len(graphs)
         for graph in graphs:
-            print(f"Testing non-UDG graph: {graph}")
+            i += 1
+            print(f"Testing {i}/{l} graph for UDG: {graph}")
             nxg = Graph6Converter.edge_list_to_graph(graph)
             g = Graph(nxg)
             self.assertEqual(expected, g.udg_recognition(), graph)

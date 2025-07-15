@@ -9,7 +9,20 @@ import Graph6Converter
 import numpy as np
 import matplotlib.pyplot as plt
 import discrete_disk
-from discrete_disk import DiscreteDisk, Coordinate, MODE_U
+from discrete_disk import DiscreteDisk, Coordinate, MODES, MODE_U, MODE_I, MODE_B
+from dataclasses import dataclass
+
+
+SQRT_2 = sqrt(2)
+
+TRIGRAPH_ONLY = "TRIGRAPH_ONLY"
+YES = "YES"
+NO = "NO"
+
+@dataclass(slots=True)
+class IterationInfo:
+    pi: int
+    pl: int
 
 class Graph:
     """Simple adjacency list graph that can be built from an integer number
@@ -18,6 +31,7 @@ class Graph:
     n: int
     adj: list[list[int]]
     coordinates: list[Coordinate]
+    iteretions: list[IterationInfo]
     order: list[int]
     unit: int
 
@@ -39,6 +53,11 @@ class Graph:
         # store vertex coordinates and additional parameters
         self.coordinates = [
             Coordinate(np.int64(0), np.int64(0), MODE_U)
+            for _ in range(self.n)
+        ]
+
+        self.iteretions = [
+            IterationInfo(0, 0)
             for _ in range(self.n)
         ]
 
@@ -74,24 +93,30 @@ class Graph:
         self.verbose = verbose
         return self
     
-    def set_coordinate(self, v: int, x: int, y: int):
+    def set_coordinate(self, v: int, x: int, y: int, type: np.uint8 = MODE_U):
         """Set coordinates for vertex ``v``."""
-        self.vertices[v].x = x
-        self.vertices[v].y = y
+        c = self.coordinates[v]
+        c.x, c.y, c.mode = x, y, type
+        return self
+    
+    def set_iteration_len(self, v: int, len: int):
+        c = self.iteretions[v].pl = len
+        return self
+
+    def set_iteration_index(self, v: int, index: int):
+        c = self.iteretions[v].pi = index
         return self
 
     def set_unit(self, unit: int):
         """Set the unit disk radius for the graph."""
         self.unit = unit
         self.unit_sq = self.unit * self.unit
-        #if hasattr(self, "eps"):
-        #    self.apply_granularity()
         return self
     
     def vertex_distance_squared(self, u: int, v: int) -> int:
         """Return squared Euclidean distance between vertices ``u`` and ``v``."""
-        dx = self.vertices[u].x - self.vertices[v].x
-        dy = self.vertices[u].y - self.vertices[v].y
+        dx = self.coordinates[u].x - self.coordinates[v].x
+        dy = self.coordinates[u].y - self.coordinates[v].y
         return dx * dx + dy * dy
 
     def vertex_distance(self, u: int, v: int) -> float:
@@ -101,7 +126,7 @@ class Graph:
     def print_coordinates(self, print_vertex: bool, print_edges: bool) -> None:
         if (print_vertex):
             for i in range(self.n):
-                print(f"  V ({i}): ({self.vertices[i].x:7d}, {self.vertices[i].y:7d})")
+                print(f"  V ({i}): ({self.coordinates[i].x:7d}, {self.coordinates[i].y:7d})")
         fail = False
         for i in range(self.n):
             for j in range(i + 1, self.n):
@@ -127,19 +152,19 @@ class Graph:
         for u in range(self.n):
             for v in self.adj[u]:
                 if u < v:  # avoid drawing twice
-                    x_values = [self.vertices[u].x, self.vertices[v].x]
-                    y_values = [self.vertices[u].y, self.vertices[v].y]
+                    x_values = [self.coordinates[u].x, self.coordinates[v].x]
+                    y_values = [self.coordinates[u].y, self.coordinates[v].y]
                     ax.plot(x_values, y_values, color="black", zorder=1)
 
         # draw vertices
         for i in range(self.n):
-            ax.scatter(self.vertices[i].x, self.vertices[i].y,
+            ax.scatter(self.coordinates[i].x, self.coordinates[i].y,
                        color=colors[i % len(colors)], zorder=2)
 
         if draw_disks:
             for i in range(self.n):
                 circle = plt.Circle(
-                    (self.vertices[i].x, self.vertices[i].y),
+                    (self.coordinates[i].x, self.coordinates[i].y),
                     self.unit,
                     color=colors[i % len(colors)],
                     fill=False,
@@ -151,7 +176,7 @@ class Graph:
         ax.set_aspect("equal", adjustable="datalim")
         return ax
 
-    def udg_recognition(self, initial_epsilon=1):
+    def udg_recognition(self):
         self.start_time = time.time()
         self.last_verbose_time = self.start_time
 
@@ -167,27 +192,29 @@ class Graph:
                 print("Graph is full, it is a UDG.")
             return True
         
-        self.eps = initial_epsilon
-        self.apply_granularity()
+        self.calculate_order()
 
         while True:
             if self.verbose:
-                print(f"Checking unit: {self.unit} epsilon: {self.eps}")
-            result = self.has_discrete_realization()
+                print(f"Checking unit: {self.unit}")
+            result = self.place_next_vertex(0)
             if result == YES:
                 self.stop_time = time.time()
                 return True
             if result == NO:
                 self.stop_time = time.time()
                 return False
-            if self.min_eps():
+            if self.is_limit_achieved():
                 self.stop_time = time.time()
                 if self.verbose:
-                    print("Reached minimum epsilon, no realization found.")
+                    print("Reached max unit = {self.unit}, no realization found.")
                 return False
 
             self.refine_granularity()
     
+    def refine_granularity(self):
+        self.set_unit(max(self.unit + 1, int(np.ceil(self.unit * 1.4))))
+
     def is_connected(self):
         """Check if the graph is connected using a simple BFS."""
         visited = [False] * self.n
@@ -205,31 +232,30 @@ class Graph:
         """Check if the graph is a full."""
         for u in range(self.n):
             for v in range(u + 1, self.n):
-                if not self.has_edge(u, v):
+                if not self.is_edge(u, v):
                     return False
         return True
 
-    def min_eps(self):
-        """Check if the current epsilon is below the minimum threshold."""
+    def is_limit_achieved(self):
         # temp
-        return (self.eps << 10) > self.unit
+        self.unit > 2**self.n
     
-    def has_discrete_realization(self):
-        self.calculate_order()
-        result = self.place_next_vertex(0)
-        return result
-
     def place_next_vertex(self, j: int):
         v = self.order[j]
         P = self.candidate_points(j)
 
         found_trigraph = False
+        if self.verbose:
+            self.set_iteration_len(v, len(P))
+        pi = -1
         for p in P:
-            self.set_coordinate(v, p[0], p[1])
+            self.set_coordinate(v, p.x, p.y, p.mode)
             if self.verbose:
+                pi += 1
+                self.set_iteration_index(v, pi)
                 if time.time() - self.last_verbose_time > 10:
                     self.last_verbose_time = time.time()
-                    print("  placing " + self.state_info())
+                    print("  placing " + self.state_info(j))
             if j < self.n - 1:
                 result = self.place_next_vertex(j + 1)
                 if result == YES:
@@ -246,62 +272,56 @@ class Graph:
 
         return TRIGRAPH_ONLY
     
-    def state_info(self) -> str:
-        return "TODO"
+    def state_info(self, j:int) -> str:
+        info = ""
+        for i in range(j):
+            k = self.order[i]
+            v = self.coordinates[k]
+            w = self.iteretions[k]
+            x = v.x / self.unit
+            y = v.y / self.unit
+            info += f"  [{w.pi:4d}/{w.pl:4d}] {k} {MODES[v.mode]} ({x: =6.3f}:{y: =6.3f})"
+        return info
     
     def is_udg_realization(self) -> bool:
-        print("TODO")
-        return True
+        return all(coord.mode == MODE_I for coord in self.coordinates)
     
-#     def refine_granularity(self):
-#         self.eps = max(self.eps / 2, self.eps_min)
-#         self.apply_granularity()
-
-    def apply_granularity(self):
-        # TODO is this need?
-        self.eps_sqrt2 = self.eps * SQRT_2
-        self.r_in      = self.unit - self.eps_sqrt2
-        self.r_out     = self.unit + self.eps_sqrt2
-        self.r_in_sq   = self.unit_sq - 2 * self.eps_sqrt2 * self.unit + 2 * self.eps
-        self.r_out_sq  = self.unit_sq + 2 * self.eps_sqrt2 * self.unit + 2 * self.eps
-
-    def candidate_points(self, order, j: int):
-        # TODO return point with info about I/B
+    def candidate_points(self, j: int) -> list[Coordinate]:
         P = []
         if j == 0:
-            P.append((0, 0))
+            P.append(Coordinate(x = 0, y = 0, mode = MODE_I))
             return P
         if j == 1:
             for x in range(0, discrete_disk.RO[self.unit]):
-                P.append((x, 0))
+                P.append(Coordinate(x = x, y = 0, mode = MODE_I if x <= discrete_disk.RI[self.unit] else MODE_B))
             return P
         if j == 2:
-            v1 = self.vertices[self.order[1]]
+            v1 = self.coordinates[self.order[1]]
             dd = DiscreteDisk.disk(self.unit, x = v1.x, y = v1.y) # connected to previous (1) vertex
             dd.disconnect(r=self.unit, x = 0, y = 0) # disconnected from fisrt (0) vertex
-            P = [p for p in dd.points_iter() if p[1] >= 0]
+            P = [p for p in dd.points_iter() if p.y >= 0]
             return P
 
-        v = self.order[j]
-        neighs    = [self.order[k] for k in range(j) if self.order[k]     in self.neighbors(v)]
-        nonneighs = [self.order[k] for k in range(j) if self.order[k] not in self.neighbors(v)]
+        vi = self.order[j]
+        neighs    = [self.order[k] for k in range(j) if self.order[k]     in self.neighbors(vi)]
+        nonneighs = [self.order[k] for k in range(j) if self.order[k] not in self.neighbors(vi)]
 
         if not neighs:
-            raise ValueError("Missing neighborhoot for vertex " + v)
+            raise ValueError("Missing neighborhoot for vertex " + vi)
         
         it = iter(neighs)
         first = next(it)
-        v = self.vertices[first]
+        v = self.coordinates[first]
         dd = DiscreteDisk.disk(self.unit, x = v.x, y = v.y)
         for i in it:
-            v = self.vertices[i]
+            v = self.coordinates[i]
             dd.connect(self.unit, x = v.x, y = v.y)
 
         for i in nonneighs:
-            v = self.vertices[i]
+            v = self.coordinates[i]
             dd.disconnect(self.unit, x = v.x, y = v.y)
 
-        return dd.points_list
+        return dd.points_list()
 
     def calculate_order(self):
         """Calculate a work order of the graph starting from any p3 inducted subgraph."""
@@ -325,40 +345,6 @@ class Graph:
                                     visited[w] = True
                                     self.order.append(w)
                                     q.append(w)
-
-#     def dist_gte_r_out(self, p1, p2):
-#         dp2 = dist_p2(p1,p2)
-#         return dp2 >= self.r_out_p2
-    
-#     def dist_lte_r_in(self, p1, p2):
-#         dp2 = dist_p2(p1,p2)
-#         return dp2 <= self.r_in_p2
-
-#     def is_udg_realization(self, coords):
-#         has_optional_edge_for_mandatory = False
-#         has_optional_edge_for_forbidden = False
-
-#         for i in range(self.n):
-#             for j in range (i+1, self.n):
-#                 dp2 = dist_p2(coords[i], coords[j])
-                
-#                 if ((dp2 > self.r_in_p2) and
-#                     (dp2 <= self.r_out_p2)):
-#                     if self.is_edge(i, j):
-#                         has_optional_edge_for_mandatory = True
-#                     else:
-#                         has_optional_edge_for_forbidden = True
-
-#         return (not has_optional_edge_for_mandatory) or (not has_optional_edge_for_forbidden)
-    
-# def dist_p2(p1, p2):
-#     return (p1[0]-p2[0])**2 + (p1[1]-p2[1])**2
-
-SQRT_2 = sqrt(2)
-
-TRIGRAPH_ONLY = "TRIGRAPH_ONLY"
-YES = "YES"
-NO = "NO"
 
 def tests(verbose=False):
     # Example usage
@@ -553,7 +539,6 @@ def main() -> None:
             g = test_coordinates_g5(args.verbose)
         elif args.graph == 'g5a':
             g = test_coordinates_g5a(args.verbose)
-        g.print_coordinates(args.print_vertex, args.print_edges)
     elif args.graph6:
         g = Graph(Graph6Converter.g6_to_graph(args.graph))
         check = True
@@ -566,6 +551,9 @@ def main() -> None:
     if check:
         output = g.udg_recognition()
         print("Graph is " + ("" if output else "NOT ") + "a Unit Disk Graph (UDG).")
+    
+    if args.print_vertex or args.print_edges:
+        g.print_coordinates(args.print_vertex, args.print_edges)
 
     if args.draw:
         g.draw(args.circle)
