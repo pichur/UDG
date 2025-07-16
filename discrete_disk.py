@@ -4,6 +4,7 @@ import argparse
 import matplotlib.pyplot as plt
 from dataclasses import dataclass, field
 from matplotlib.colors import ListedColormap
+from typing import ClassVar
 
 MODE_O = 0 # symbol 'O' (outer   ) 0
 MODE_B = 1 # symbol 'B' (boundary) 1
@@ -27,7 +28,7 @@ N=2**8
 
 DSQRT2 = 2*np.sqrt(2)
 
-_disk_cache: dict[int, np.ndarray] = {}
+_disk_cache: dict[int, (np.ndarray, np.ndarray)] = {}
 
 def R_CALC():
     """Calculate the ranges for discrete disks."""
@@ -72,6 +73,28 @@ def symmetric_set(M: np.ndarray, i: int, j: int, radius: int, symbol: np.uint8) 
     M[radius - j, radius + i] = symbol
     M[radius - j, radius - i] = symbol
 
+def _get_from_disk_cache(radius: int, connected: bool) -> np.ndarray:
+    if radius not in _disk_cache:
+        r = radius + 1  # radius + margin=floor(sqrt(2))
+        # + 1 for 0; C = Connected, D = Disconnected
+        C = np.full((2 * r + 1, 2 * r + 1), MODE_I, dtype=np.uint8)
+        D = np.full((2 * r + 1, 2 * r + 1), MODE_O, dtype=np.uint8)
+        for ix in range(r + 1):
+            for iy in range(ix, r + 1):
+                if DS[idx(ix, iy)] >= ROS[radius]:
+                    symmetric_set(C, ix, iy, r, MODE_O)
+                    symmetric_set(D, ix, iy, r, MODE_I)
+                elif DS[idx(ix, iy)] > RIS[radius]:
+                    symmetric_set(C, ix, iy, r, MODE_B)
+                    symmetric_set(D, ix, iy, r, MODE_B)
+
+        C.setflags(write=False)
+        D.setflags(write=False)
+        _disk_cache[radius] = (C, D)
+    
+    return _disk_cache[radius][0 if connected else 1]
+
+
 @dataclass(slots=True)
 class Coordinate:
     x: int
@@ -81,26 +104,20 @@ class Coordinate:
 @dataclass
 class DiscreteDisk:
     data: np.ndarray
+    rest: np.uint8
     x: int
     y: int
     _shared: bool = field(default=False, repr=False, compare=False)
+
+    DISK_NONE  : ClassVar["DiscreteDisk"]
+    DISK_OUTER : ClassVar["DiscreteDisk"]
+    DISK_INNER : ClassVar["DiscreteDisk"]
     
     @classmethod
-    def disk(cls, radius: int = 4, x: int = 0, y: int = 0) -> "DiscreteDisk":
+    def disk(cls, radius: int = 4, x: int = 0, y: int = 0, connected: bool = True) -> "DiscreteDisk":
         r = radius + 1  # radius + margin=floor(sqrt(2))
-        if radius not in _disk_cache:
-            M = np.full((2 * r + 1, 2 * r + 1), MODE_I, dtype=np.uint8)  # + 1 for 0
-            for ix in range(r + 1):
-                for iy in range(ix, r + 1):
-                    if DS[idx(ix, iy)] >= ROS[radius]:
-                        symmetric_set(M, ix, iy, r, MODE_O)
-                    elif DS[idx(ix, iy)] > RIS[radius]:
-                        symmetric_set(M, ix, iy, r, MODE_B)
-            M.setflags(write=False)
-            _disk_cache[radius] = M
-        else:
-            M = _disk_cache[radius]
-        return cls(M, x - r, y - r, True)
+        M = _get_from_disk_cache(radius, connected)
+        return cls(M, MODE_O if connected else MODE_I, x - r, y - r, True)
 
     def points_iter(self, types: tuple[np.uint8, ...] = (MODE_I, MODE_B)):
         """Iterate over points of selected types.
@@ -173,22 +190,43 @@ class DiscreteDisk:
         ibx1 = min(w, -bx + b.data.shape[1])
         
         if iay0 >= iay1 or iax0 >= iax1:
-            if operation is TBL_AND:
-                # If no overlap, set all to outer
+            if operation is TBL_AND and b.rest == MODE_O:
+                # If no overlap and rest of connected disk is outer, set all to outer
                 self.data[:, :] = MODE_O
         else:
             # Apply the operation
             asub = self.data[iay0:iay1, iax0:iax1]          # widok, nie kopia
             bsub = b   .data[iby0:iby1, ibx0:ibx1]          # ten sam kształt co a
             np.copyto(asub, operation[asub, bsub])          # zapis in-place
-            if operation is TBL_AND:
-                # Rest of the disk set to outer
+            if operation is TBL_AND and b.rest == MODE_O:
+                # If rest of connected disk is outer, rest of the disk set to outer too
                 self.data[:iay0, :] = MODE_O
                 self.data[iay1:, :] = MODE_O
                 self.data[:, :iax0] = MODE_O
                 self.data[:, iax1:] = MODE_O
 
         # Return self for method chaining
+        return self
+    
+    def crop(self) -> "DiscreteDisk":
+        """Crop the matrix by removing outer rows/columns with values equal to self.rest."""
+        mask = self.data != self.rest
+
+        # Find bounds
+        rows = np.any(mask, axis=1)
+        cols = np.any(mask, axis=0)
+
+        if not np.any(rows) or not np.any(cols):
+            # All values are rest, return minimal disk
+            return DISK_INNER if self.rest == MODE_I else DISK_OUTER
+
+        y0, y1 = np.where(rows)[0][[0, -1]]
+        x0, x1 = np.where(cols)[0][[0, -1]]
+
+        self.data = self.data[y0:y1+1, x0:x1+1]
+        self.x += x0
+        self.y += y0
+
         return self
 
     def is_all_points_O(self) -> bool:
@@ -237,6 +275,78 @@ class DiscreteDisk:
         ax.set_yticks([])
         ax.set_aspect('equal', adjustable='box')
         return ax
+
+DISK_NONE  = DiscreteDisk.disk(1, 0, 0)
+DISK_OUTER = DiscreteDisk(np.full((0, 0), MODE_O, dtype=np.uint8), MODE_O, 0, 0, True)
+DISK_INNER = DiscreteDisk(np.full((0, 0), MODE_I, dtype=np.uint8), MODE_I, 0, 0, True)
+
+def create_area_by_join(a: DiscreteDisk, b: DiscreteDisk) -> DiscreteDisk:
+    """Join area, increase shape if need."""
+
+    ah, aw = a.data.shape
+    bh, bw = b.data.shape
+    
+    # Basic operation, result is overlap region
+    min_x = max(a.x     , b.x     )
+    min_y = max(a.y     , b.y     )
+    max_x = min(a.x + aw, b.x + bw)
+    max_y = min(a.y + ah, b.y + bh)
+
+    w = max_x - min_x
+    h = max_y - min_y
+
+    if w > 0 and h > 0:
+        ax = min_x - a.x
+        ay = min_y - a.y
+        bx = min_x - b.x
+        by = min_y - b.y
+        M = TBL_AND[a.data[ay:ay+h, ax:ax+w], b.data[by:by+h, bx:bx+w]]
+    else:
+        M = DISK_NONE
+
+    if a.rest == MODE_O and b.rest == MODE_O:
+        # Both Outer
+        if M is DISK_NONE:
+            return DISK_OUTER
+        else:
+            return DiscreteDisk(M, MODE_O, min_x, min_y, False).crop()
+    elif a.rest == MODE_O or b.rest == MODE_O:
+        # One Outer other Inner
+        if M is DISK_NONE:
+            return DISK_OUTER
+        else:
+            o = a if a.rest == MODE_O else b
+            ox = min_x - o.x
+            oy = min_y - o.y
+            OM = o.data.copy()
+            np.copyto(OM[oy:oy+h, ox:ox+w], M)
+            return DiscreteDisk(OM, MODE_O, o.x, o.y, False).crop()
+    else:
+        # Both Inner
+        min_x_oo = min(a.x     , b.x     )
+        min_y_oo = min(a.y     , b.y     )
+        max_x_oo = max(a.x + aw, b.x + bw)
+        max_y_oo = max(a.y + ah, b.y + bh)
+
+        w_oo = max_x_oo - min_x_oo
+        h_oo = max_y_oo - min_y_oo
+        
+        MOO = np.full((h_oo, w_oo), MODE_I, dtype=np.uint8)
+
+        ax_oo = a.x - min_x_oo
+        ay_oo = a.y - min_y_oo
+        np.copyto(MOO[ay_oo:ay_oo+ah, ax_oo:ax_oo+aw], a.data)
+
+        bx_oo = b.x - min_x_oo
+        by_oo = b.y - min_y_oo
+        np.copyto(MOO[by_oo:by_oo+bh, bx_oo:bx_oo+bw], b.data)
+
+        if M is not DISK_NONE:
+            x_oo = min_x - min_x_oo
+            y_oo = min_y - min_y_oo
+            np.copyto(MOO[y_oo:y_oo+h, x_oo:x_oo+w], M)
+
+        return DiscreteDisk(MOO, MODE_I, min_x_oo, min_y_oo, False).crop()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Discrete Disk Helper.")
