@@ -133,13 +133,12 @@ class DiscreteDisk:
             ``(x, y)`` coordinates of matching cells, ordered row by row with
             ``y`` increasing first and ``x`` increasing second.
         """
-        h, w = self.data.shape
-        for iy in range(h):
-            y = self.y + iy
-            for ix in range(w):
-                if self.data[iy, ix] in types:
-                    x = self.x + ix
-                    yield Coordinate(x, y, self.data[iy, ix])
+        mask = np.isin(self.data, types)
+        ys, xs = np.nonzero(mask)
+        values = self.data[ys, xs]
+        x0, y0 = self.x, self.y
+        for iy, ix, val in zip(ys, xs, values):
+            yield Coordinate(x0 + ix, y0 + iy, val)
 
     def points_IB_iter(self):
         h, w = self.data.shape
