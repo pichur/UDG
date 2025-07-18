@@ -9,20 +9,18 @@ import Graph6Converter
 import numpy as np
 import matplotlib.pyplot as plt
 import discrete_disk
-from discrete_disk import DiscreteDisk, Coordinate, MODES, MODE_U, MODE_I, MODE_B
+from discrete_disk import create_area_by_join, DiscreteDisk, Coordinate, MODES, MODE_U, MODE_I, MODE_B, DISK_NONE
 from dataclasses import dataclass
 
 
-SQRT_2 = sqrt(2)
-
-TRIGRAPH_ONLY = "TRIGRAPH_ONLY"
+TRIGRAPH = "TRIGRAPH"
 YES = "YES"
 NO = "NO"
 
 @dataclass(slots=True)
 class IterationInfo:
-    pi: int
-    pl: int
+    point_iter: int
+    point_size: int
 
 class Graph:
     """Simple adjacency list graph that can be built from an integer number
@@ -34,6 +32,7 @@ class Graph:
     iteretions: list[IterationInfo]
     order: list[int]
     unit: int
+    previous_area: list[list[DiscreteDisk]]
 
     def __init__(self, n_or_g):
         if isinstance(n_or_g, int):
@@ -61,6 +60,10 @@ class Graph:
             for _ in range(self.n)
         ]
 
+        # set to real values during processing
+        # indexing by permuted work order
+        self.previous_area = [[DISK_NONE for _ in range(self.n)] for _ in range(self.n)]
+
         self.order = range(self.n)
 
         self.set_unit(1)
@@ -76,16 +79,16 @@ class Graph:
         # self.eps_min = 1e-12
         self.eps_min = 1
 
-    def add_edge(self, u, v):
+    def add_edge(self, u: int, v: int):
         if v not in self.adj[u]:
             self.adj[u].append(v)
         if u not in self.adj[v]:
             self.adj[v].append(u)
 
-    def neighbors(self, v):
+    def neighbors(self, v: int):
         return self.adj[v]
 
-    def is_edge(self, u, v):
+    def is_edge(self, u: int, v: int):
         return v in self.adj[u]
     
     def set_verbose(self, verbose):
@@ -95,16 +98,21 @@ class Graph:
     
     def set_coordinate(self, v: int, x: int, y: int, type: np.uint8 = MODE_U):
         """Set coordinates for vertex ``v``."""
-        c = self.coordinates[v]
-        c.x, c.y, c.mode = x, y, type
+        v = self.coordinates[v]
+        v.x, v.y, v.mode = x, y, type
         return self
     
+    def clear_previous_area(self, order_index: int):
+        for i in range(self.n):
+            for j in range(order_index, self.n):
+                self.previous_area[i][j] = DISK_NONE
+
     def set_iteration_len(self, v: int, len: int):
-        c = self.iteretions[v].pl = len
+        c = self.iteretions[v].point_size = len
         return self
 
     def set_iteration_index(self, v: int, index: int):
-        c = self.iteretions[v].pi = index
+        c = self.iteretions[v].point_iter = index
         return self
 
     def set_unit(self, unit: int):
@@ -197,7 +205,7 @@ class Graph:
         while True:
             if self.verbose:
                 print(f"Checking unit: {self.unit}")
-            result = self.place_next_vertex(0)
+            result = self.has_discrete_realization()
             if result == YES:
                 self.stop_time = time.time()
                 return True
@@ -239,89 +247,112 @@ class Graph:
     def is_limit_achieved(self):
         # temp
         self.unit > 2**self.n
+
+    def has_discrete_realization(self):
+        for only_I in [True, False]:
+            if self.verbose:
+                print(f"  {'Inner' if only_I else 'All'}")
+            # TODO we look for solution, so first can look by I points
+            # TODO If any B on path result is TRIGRAPH_ONLY so first found can stop
+            count_I: int = 0
+            count_B: int = 0
+            result = self.place_next_vertex(0, only_I, count_I, count_B)
+            if result == YES:
+                return YES
+        return result
     
-    def place_next_vertex(self, j: int):
-        v = self.order[j]
-        P = self.candidate_points(j)
+    def place_next_vertex(self, j: int, only_I: bool, count_I: int, count_B: int):
+        v_index = self.order[j]
+
+        P = self.candidate_points(j, only_I, count_I, count_B)
 
         found_trigraph = False
         if self.verbose:
-            self.set_iteration_len(v, len(P))
-        pi = -1
+            self.set_iteration_len(v_index, len(P))
+        point_iter = -1
         for p in P:
-            self.set_coordinate(v, p.x, p.y, p.mode)
+            incr_I = 1 if p.mode == MODE_I else 0
+            incr_B = 1 if p.mode == MODE_B else 0
+
+            self.set_coordinate(v_index, p.x, p.y, p.mode)
+            self.clear_previous_area(j)
+
             if self.verbose:
-                pi += 1
-                self.set_iteration_index(v, pi)
+                point_iter += 1
+                self.set_iteration_index(v_index, point_iter)
                 if time.time() - self.last_verbose_time > 10:
                     self.last_verbose_time = time.time()
-                    print("  placing " + self.state_info(j))
+                    print("  placing " + self.state_info(only_I, j))
             if j < self.n - 1:
-                result = self.place_next_vertex(j + 1)
+                result = self.place_next_vertex(j + 1, only_I, count_I + incr_I, count_B + incr_B)
                 if result == YES:
                     return YES
-                if result == TRIGRAPH_ONLY:
+                if result == TRIGRAPH:
+                    if not only_I:
+                        return TRIGRAPH
                     found_trigraph=True
             else:
-                found_trigraph = True
-                if self.is_udg_realization():
+                # if self.is_udg_realization():
+                if count_I + incr_I == self.n:
                     return YES
+                if not only_I:
+                    return TRIGRAPH
+                found_trigraph = True
         
         if not found_trigraph:
             return NO
 
-        return TRIGRAPH_ONLY
+        return TRIGRAPH
     
-    def state_info(self, j:int) -> str:
-        info = ""
-        for i in range(j):
+    def state_info(self, only_I: bool, j:int) -> str:
+        info = f" {'I' if only_I else 'A'}"
+        for i in range(j+1):
             k = self.order[i]
-            v = self.coordinates[k]
+            c = self.coordinates[k]
             w = self.iteretions[k]
-            x = v.x / self.unit
-            y = v.y / self.unit
-            info += f"  [{w.pi:4d}/{w.pl:4d}] {k} {MODES[v.mode]} ({x: =6.3f}:{y: =6.3f})"
+            x = c.x / self.unit
+            y = c.y / self.unit
+            info += f"  [{w.point_iter+1:4d}/{w.point_size:4d}] {k} {MODES[c.mode]} ({x: =6.3f}:{y: =6.3f})"
         return info
     
     def is_udg_realization(self) -> bool:
         return all(coord.mode == MODE_I for coord in self.coordinates)
     
-    def candidate_points(self, j: int) -> list[Coordinate]:
+    def candidate_points(self, j: int, only_I: bool, count_I: int, count_B: int) -> list[Coordinate]:
         P = []
         if j == 0:
             P.append(Coordinate(x = 0, y = 0, mode = MODE_I))
             return P
         if j == 1:
-            for x in range(0, discrete_disk.RO[self.unit]):
-                P.append(Coordinate(x = x, y = 0, mode = MODE_I if x <= discrete_disk.RI[self.unit] else MODE_B))
+            if only_I:
+                for x in range(0, discrete_disk.RI[self.unit]):
+                    P.append(Coordinate(x = x, y = 0, mode = MODE_I))
+            else:
+                for x in range(0, discrete_disk.RO[self.unit]):
+                    P.append(Coordinate(x = x, y = 0, mode = MODE_I if x <= discrete_disk.RI[self.unit] else MODE_B))
             return P
         if j == 2:
             v1 = self.coordinates[self.order[1]]
             dd = DiscreteDisk.disk(self.unit, x = v1.x, y = v1.y) # connected to previous (1) vertex
             dd.disconnect(r=self.unit, x = 0, y = 0) # disconnected from fisrt (0) vertex
-            P = [p for p in dd.points_iter() if p.y >= 0]
+            P = [p for p in dd.points_iter(types = [MODE_I] if only_I else [MODE_I, MODE_B]) if p.y >= 0]
             return P
 
-        vi = self.order[j]
-        neighs    = [self.order[k] for k in range(j) if self.order[k]     in self.neighbors(vi)]
-        nonneighs = [self.order[k] for k in range(j) if self.order[k] not in self.neighbors(vi)]
+        i = j - 2
+        while i >= 0 and self.previous_area[j][i] is DISK_NONE:
+            i -= 1
 
-        if not neighs:
-            raise ValueError("Missing neighborhoot for vertex " + vi)
-        
-        it = iter(neighs)
-        first = next(it)
-        v = self.coordinates[first]
-        dd = DiscreteDisk.disk(self.unit, x = v.x, y = v.y)
-        for i in it:
-            v = self.coordinates[i]
-            dd.connect(self.unit, x = v.x, y = v.y)
+        neighbors_v_order_j = self.neighbors(self.order[j])
 
-        for i in nonneighs:
-            v = self.coordinates[i]
-            dd.disconnect(self.unit, x = v.x, y = v.y)
+        for k in range(i+1, j):
+            coord_v_order_k = self.coordinates[self.order[k]]
+            area = DiscreteDisk.disk(self.unit, coord_v_order_k.x, coord_v_order_k.y, connected = self.order[k] in neighbors_v_order_j)
+            if k > 0:
+                prev_area = self.previous_area[j][k-1]
+                area = create_area_by_join(prev_area, area)
+            self.previous_area[j][k] = area
 
-        return dd.points_list()
+        return area.points_list(types = [MODE_I] if only_I else [MODE_I, MODE_B])
 
     def calculate_order(self):
         """Calculate a work order of the graph starting from any p3 inducted subgraph."""

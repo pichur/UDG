@@ -141,9 +141,27 @@ class DiscreteDisk:
                     x = self.x + ix
                     yield Coordinate(x, y, self.data[iy, ix])
 
+    def points_IB_iter(self):
+        h, w = self.data.shape
+        for iy in range(h):
+            y = self.y + iy
+            for ix in range(w):
+                if self.data[iy, ix] == MODE_I:
+                    x = self.x + ix
+                    yield Coordinate(x, y, self.data[iy, ix])
+        for iy in range(h):
+            y = self.y + iy
+            for ix in range(w):
+                if self.data[iy, ix] == MODE_B:
+                    x = self.x + ix
+                    yield Coordinate(x, y, self.data[iy, ix])
+
     def points_list(self, types: tuple[np.uint8, ...] = (MODE_I, MODE_B)) -> list[Coordinate]:
         return list(self.points_iter(types))
 
+    def points_IB_list(self) -> list[Coordinate]:
+        return list(self.points_IB_iter())
+    
     def shift(self, dx: int = 0, dy: int = 0) -> "DiscreteDisk":
         self.x += dx
         self.y += dy
