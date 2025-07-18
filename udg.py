@@ -131,7 +131,9 @@ class Graph:
         """Return Euclidean distance between vertices ``u`` and ``v``."""
         return sqrt(self.vertex_distance_squared(u, v))
 
-    def print_coordinates(self, print_vertex: bool, print_edges: bool) -> None:
+    def print_result(self, print_vertex: bool, print_edges: bool) -> None:
+        time = self.stop_time - self.start_time
+        print(f"Time consumed: {time} s")
         if (print_vertex):
             for i in range(self.n):
                 print(f"  V ({i}): ({self.coordinates[i].x:7d}, {self.coordinates[i].y:7d})")
@@ -200,7 +202,8 @@ class Graph:
                 print("Graph is full, it is a UDG.")
             return True
         
-        self.calculate_order()
+        #self.calculate_order_path()
+        self.calculate_order_degree_level(desc = False)
 
         while True:
             if self.verbose:
@@ -252,8 +255,6 @@ class Graph:
         for only_I in [True, False]:
             if self.verbose:
                 print(f"  {'Inner' if only_I else 'All'}")
-            # TODO we look for solution, so first can look by I points
-            # TODO If any B on path result is TRIGRAPH_ONLY so first found can stop
             count_I: int = 0
             count_B: int = 0
             result = self.place_next_vertex(0, only_I, count_I, count_B)
@@ -331,12 +332,6 @@ class Graph:
                 for x in range(0, discrete_disk.RO[self.unit]):
                     P.append(Coordinate(x = x, y = 0, mode = MODE_I if x <= discrete_disk.RI[self.unit] else MODE_B))
             return P
-        if j == 2:
-            v1 = self.coordinates[self.order[1]]
-            dd = DiscreteDisk.disk(self.unit, x = v1.x, y = v1.y) # connected to previous (1) vertex
-            dd.disconnect(r=self.unit, x = 0, y = 0) # disconnected from fisrt (0) vertex
-            P = [p for p in dd.points_iter(types = [MODE_I] if only_I else [MODE_I, MODE_B]) if p.y >= 0]
-            return P
 
         i = j - 2
         while i >= 0 and self.previous_area[j][i] is DISK_NONE:
@@ -352,9 +347,13 @@ class Graph:
                 area = create_area_by_join(prev_area, area)
             self.previous_area[j][k] = area
 
-        return area.points_list(types = [MODE_I] if only_I else [MODE_I, MODE_B])
+        if j == 2:
+            P = [p for p in area.points_iter(types = [MODE_I] if only_I else [MODE_I, MODE_B]) if p.y >= 0]
+            return P
+        else: 
+            return area.points_list(types = [MODE_I] if only_I else [MODE_I, MODE_B])
 
-    def calculate_order(self):
+    def calculate_order_path(self):
         """Calculate a work order of the graph starting from any p3 inducted subgraph."""
         # Find a P3 (path of length 2) induced subgraph: vertices 0-1-2 such that
         # 0-1 and 1-2 are edges, but 0-2 is not an edge.
@@ -376,6 +375,41 @@ class Graph:
                                     visited[w] = True
                                     self.order.append(w)
                                     q.append(w)
+
+    def calculate_order_degree_level(self, desc: bool = True):
+        """Calculate a work order starting from the highest degree vertex, then its neighbors (by degree), then their neighbors, etc., for any number of levels."""
+        degrees = [len(self.adj[v]) for v in range(self.n)]
+        used = [False] * self.n
+        order = []
+
+        # Start from the vertex with the highest degree
+        current_level = [max(range(self.n), key=lambda v: degrees[v]) if desc else min(range(self.n), key=lambda v: degrees[v])]
+        used[current_level[0]] = True
+        order.append(current_level[0])
+
+        while len(order) < self.n:
+            next_level = set()
+            for v in current_level:
+                for u in self.neighbors(v):
+                    if not used[u]:
+                        next_level.add(u)
+            # Remove already used vertices and sort by degree
+            next_level = sorted(next_level, key=lambda v: degrees[v], reverse=desc)
+            for v in next_level:
+                if not used[v]:
+                    order.append(v)
+                    used[v] = True
+            current_level = next_level
+            # If no new vertices found, add any remaining unused vertices
+            if not current_level and len(order) < self.n:
+                remaining = [v for v in range(self.n) if not used[v]]
+                remaining = sorted(remaining, key=lambda v: degrees[v], reverse=desc)
+                for v in remaining:
+                    order.append(v)
+                    used[v] = True
+                break
+
+        self.order = order
 
 def tests(verbose=False):
     # Example usage
@@ -552,6 +586,9 @@ def main() -> None:
         "-v", "--verbose", action="store_true",
         help="Enable verbose output for debugging")
     parser.add_argument(
+        "-u", "--unit", type=int,
+        help="Start unit")
+    parser.add_argument(
         "graph", metavar="GRAPH", nargs="?", default="",
         help="Input graph description")
 
@@ -579,12 +616,15 @@ def main() -> None:
 
     g.set_verbose(args.verbose)
 
+    if args.unit:
+        g.set_unit(args.unit)
+
     if check:
         output = g.udg_recognition()
         print("Graph is " + ("" if output else "NOT ") + "a Unit Disk Graph (UDG).")
     
     if args.print_vertex or args.print_edges:
-        g.print_coordinates(args.print_vertex, args.print_edges)
+        g.print_result(args.print_vertex, args.print_edges)
 
     if args.draw:
         g.draw(args.circle)
