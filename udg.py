@@ -26,13 +26,17 @@ class Graph:
     """Simple adjacency list graph that can be built from an integer number
     of vertices or from a :class:`networkx.Graph` instance."""
     verbose: bool
+
+    unit: int
     n: int
     adj: list[list[int]]
-    coordinates: list[Coordinate]
-    iteretions: list[IterationInfo]
+
     order: list[int]
-    unit: int
+    coordinates: list[Coordinate]
+
     previous_area: list[list[DiscreteDisk]]
+
+    iteretions: list[IterationInfo]
 
     def __init__(self, n_or_g):
         if isinstance(n_or_g, int):
@@ -103,9 +107,9 @@ class Graph:
         return self
     
     def clear_previous_area(self, order_index: int):
-        for i in range(self.n):
-            for j in range(order_index, self.n):
-                self.previous_area[i][j] = DISK_NONE
+        fill = [DISK_NONE] * (self.n - order_index)
+        for row in self.previous_area:
+            row[order_index:] = fill
 
     def set_iteration_len(self, v: int, len: int):
         c = self.iteretions[v].point_size = len
@@ -348,10 +352,10 @@ class Graph:
             self.previous_area[j][k] = area
 
         if j == 2:
-            P = [p for p in area.points_iter(types = [MODE_I] if only_I else [MODE_I, MODE_B]) if p.y >= 0]
+            P = [p for p in area.points_iter(types = ('I' if only_I else 'IB')) if p.y >= 0]
             return P
         else: 
-            return area.points_list(types = [MODE_I] if only_I else [MODE_I, MODE_B])
+            return area.points_list(types = ('I' if only_I else 'IB'))
 
     def calculate_order_path(self):
         """Calculate a work order of the graph starting from any p3 inducted subgraph."""

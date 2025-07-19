@@ -30,6 +30,11 @@ DSQRT2 = 2*np.sqrt(2)
 
 _disk_cache: dict[int, (np.ndarray, np.ndarray)] = {}
 
+@dataclass
+class Options:
+    crop: bool = False
+opts = Options()
+
 def R_CALC():
     """Calculate the ranges for discrete disks."""
     global RI, RO, RIS, ROS
@@ -119,21 +124,17 @@ class DiscreteDisk:
         M = _get_from_disk_cache(radius, connected)
         return cls(M, MODE_O if connected else MODE_I, x - r, y - r, True)
 
-    def points_iter(self, types: tuple[np.uint8, ...] = (MODE_I, MODE_B)):
-        """Iterate over points of selected types.
-
-        Parameters
-        ----------
-        types : tuple[np.uint8, ...], optional
-            Cell types to iterate over. Defaults to ``(I, B)``.
-
-        Yields
-        ------
-        tuple[int, int]
-            ``(x, y)`` coordinates of matching cells, ordered row by row with
-            ``y`` increasing first and ``x`` increasing second.
-        """
-        mask = np.isin(self.data, types)
+    def points_iter(self, types: str = 'IB'):
+        """Iterate over points of selected types."""
+        if types == 'I':
+            mask = (self.data == MODE_I) 
+        elif types == 'B':
+            mask = (self.data == MODE_B) 
+        elif types == 'IB' or types == 'BI':
+            mask = (self.data == MODE_I) | (self.data == MODE_B)
+        else:
+            raise ValueError('Not supported types: {types}')
+        
         ys, xs = np.nonzero(mask)
         values = self.data[ys, xs]
         x0, y0 = self.x, self.y
@@ -141,21 +142,10 @@ class DiscreteDisk:
             yield Coordinate(x0 + ix, y0 + iy, val)
 
     def points_IB_iter(self):
-        h, w = self.data.shape
-        for iy in range(h):
-            y = self.y + iy
-            for ix in range(w):
-                if self.data[iy, ix] == MODE_I:
-                    x = self.x + ix
-                    yield Coordinate(x, y, self.data[iy, ix])
-        for iy in range(h):
-            y = self.y + iy
-            for ix in range(w):
-                if self.data[iy, ix] == MODE_B:
-                    x = self.x + ix
-                    yield Coordinate(x, y, self.data[iy, ix])
+        self.points_iter('I')
+        self.points_iter('B')
 
-    def points_list(self, types: tuple[np.uint8, ...] = (MODE_I, MODE_B)) -> list[Coordinate]:
+    def points_list(self, types: str = 'IB') -> list[Coordinate]:
         return list(self.points_iter(types))
 
     def points_IB_list(self) -> list[Coordinate]:
@@ -227,6 +217,9 @@ class DiscreteDisk:
     
     def crop(self) -> "DiscreteDisk":
         """Crop the matrix by removing outer rows/columns with values equal to self.rest."""
+        if not opts.crop:
+            return self
+        
         mask = self.data != self.rest
 
         # Find bounds

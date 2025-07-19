@@ -1,0 +1,373 @@
+Show only functions ≥ 0.100 s
+Timer unit: 1e-07 s
+
+Total time: 75.1234 s
+File: C:\Users\Acer\OneDrive\StDoc\proj\UDG\UDG\udg.py
+Function: udg_recognition at line 193
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   193                                               def udg_recognition(self):
+   194         1         35.0     35.0      0.0          self.start_time = time.time()
+   195         1         12.0     12.0      0.0          self.last_verbose_time = self.start_time
+   196                                           
+   197         1       1300.0   1300.0      0.0          if not self.is_connected():
+   198                                                       self.stop_time = time.time()
+   199                                                       if self.verbose:
+   200                                                           print("Graph is not connected, cannot be a UDG.")
+   201                                                       return False
+   202                                           
+   203         1        347.0    347.0      0.0          if self.is_full():
+   204                                                       self.stop_time = time.time()
+   205                                                       if self.verbose:
+   206                                                           print("Graph is full, it is a UDG.")
+   207                                                       return True
+   208                                                   
+   209                                                   #self.calculate_order_path()
+   210         1       2219.0   2219.0      0.0          self.calculate_order_degree_level(desc = False)
+   211                                           
+   212         1          7.0      7.0      0.0          while True:
+   213         1         10.0     10.0      0.0              if self.verbose:
+   214                                                           print(f"Checking unit: {self.unit}")
+   215         1  751230044.0    8e+08    100.0              result = self.has_discrete_realization()
+   216         1          7.0      7.0      0.0              if result == YES:
+   217         1         60.0     60.0      0.0                  self.stop_time = time.time()
+   218         1          5.0      5.0      0.0                  return True
+   219                                                       if result == NO:
+   220                                                           self.stop_time = time.time()
+   221                                                           return False
+   222                                                       if self.is_limit_achieved():
+   223                                                           self.stop_time = time.time()
+   224                                                           if self.verbose:
+   225                                                               print("Reached max unit = {self.unit}, no realization found.")
+   226                                                           return False
+   227                                           
+   228                                                       self.refine_granularity()
+
+
+
+
+Total time: 75.123 s
+File: C:\Users\Acer\OneDrive\StDoc\proj\UDG\UDG\udg.py
+Function: has_discrete_realization at line 258
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   258                                               def has_discrete_realization(self):
+   259         1         15.0     15.0      0.0          for only_I in [True, False]:
+   260         1         12.0     12.0      0.0              if self.verbose:
+   261                                                           print(f"  {'Inner' if only_I else 'All'}")
+   262         1          8.0      8.0      0.0              count_I: int = 0
+   263         1         10.0     10.0      0.0              count_B: int = 0
+   264         1  751229857.0    8e+08    100.0              result = self.place_next_vertex(0, only_I, count_I, count_B)
+   265         1          8.0      8.0      0.0              if result == YES:
+   266         1          8.0      8.0      0.0                  return YES
+   267                                                   return result
+
+
+
+
+Total time: 72.2697 s
+File: C:\Users\Acer\OneDrive\StDoc\proj\UDG\UDG\udg.py
+Function: place_next_vertex at line 269
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   269                                               def place_next_vertex(self, j: int, only_I: bool, count_I: int, count_B: int):
+   270    210387    2101410.0     10.0      0.3          v_index = self.order[j]
+   271                                           
+   272    210387  564279403.0   2682.1     78.1          P = self.candidate_points(j, only_I, count_I, count_B)
+   273                                           
+   274    210387    1453290.0      6.9      0.2          found_trigraph = False
+   275    210387    1878976.0      8.9      0.3          if self.verbose:
+   276                                                       self.set_iteration_len(v_index, len(P))
+   277    210387    1397635.0      6.6      0.2          point_iter = -1
+   278    420765    4325152.0     10.3      0.6          for p in P:
+   279    210387   20579099.0     97.8      2.8              incr_I = 1 if p.mode == MODE_I else 0
+   280    210387   12247155.0     58.2      1.7              incr_B = 1 if p.mode == MODE_B else 0
+   281                                           
+   282    210387   20245657.0     96.2      2.8              self.set_coordinate(v_index, p.x, p.y, p.mode)
+   283    210387   76953550.0    365.8     10.6              self.clear_previous_area(j)
+   284                                           
+   285    210387    1850889.0      8.8      0.3              if self.verbose:
+   286                                                           point_iter += 1
+   287                                                           self.set_iteration_index(v_index, point_iter)
+   288                                                           if time.time() - self.last_verbose_time > 10:
+   289                                                               self.last_verbose_time = time.time()
+   290                                                               print("  placing " + self.state_info(only_I, j))
+   291    210387    2621156.0     12.5      0.4              if j < self.n - 1:
+   292    210386    4825979.0     22.9      0.7                  result = self.place_next_vertex(j + 1, only_I, count_I + incr_I, count_B + incr_B)
+   293    210386    2514525.0     12.0      0.3                  if result == YES:
+   294         8         46.0      5.8      0.0                      return YES
+   295    210378    2055162.0      9.8      0.3                  if result == TRIGRAPH:
+   296                                                               if not only_I:
+   297                                                                   return TRIGRAPH
+   298                                                               found_trigraph=True
+   299                                                       else:
+   300                                                           # if self.is_udg_realization():
+   301         1         10.0     10.0      0.0                  if count_I + incr_I == self.n:
+   302         1          7.0      7.0      0.0                      return YES
+   303                                                           if not only_I:
+   304                                                               return TRIGRAPH
+   305                                                           found_trigraph = True
+   306                                                   
+   307    210378    1597676.0      7.6      0.2          if not found_trigraph:
+   308    210378    1770644.0      8.4      0.2              return NO
+   309                                           
+   310                                                   return TRIGRAPH
+
+
+
+
+Total time: 53.3928 s
+File: C:\Users\Acer\OneDrive\StDoc\proj\UDG\UDG\udg.py
+Function: candidate_points at line 326
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   326                                               def candidate_points(self, j: int, only_I: bool, count_I: int, count_B: int) -> list[Coordinate]:
+   327    210387    1734782.0      8.2      0.3          P = []
+   328    210387    1858166.0      8.8      0.3          if j == 0:
+   329         1        171.0    171.0      0.0              P.append(Coordinate(x = 0, y = 0, mode = MODE_I))
+   330         1         12.0     12.0      0.0              return P
+   331    210386    1665804.0      7.9      0.3          if j == 1:
+   332         1          7.0      7.0      0.0              if only_I:
+   333        15        173.0     11.5      0.0                  for x in range(0, discrete_disk.RI[self.unit]):
+   334        14       1114.0     79.6      0.0                      P.append(Coordinate(x = x, y = 0, mode = MODE_I))
+   335                                                       else:
+   336                                                           for x in range(0, discrete_disk.RO[self.unit]):
+   337                                                               P.append(Coordinate(x = x, y = 0, mode = MODE_I if x <= discrete_disk.RI[self.unit] else MODE_B))
+   338         1          5.0      5.0      0.0              return P
+   339                                           
+   340    210385    1819093.0      8.6      0.3          i = j - 2
+   341    229588    3829046.0     16.7      0.7          while i >= 0 and self.previous_area[j][i] is DISK_NONE:
+   342     19203     189246.0      9.9      0.0              i -= 1
+   343                                           
+   344    210385   10002136.0     47.5      1.9          neighbors_v_order_j = self.neighbors(self.order[j])
+   345                                           
+   346    439973    7932749.0     18.0      1.5          for k in range(i+1, j):
+   347    229588    2754715.0     12.0      0.5              coord_v_order_k = self.coordinates[self.order[k]]
+   348    229588   56226968.0    244.9     10.5              area = DiscreteDisk.disk(self.unit, coord_v_order_k.x, coord_v_order_k.y, connected = self.order[k] in neighbors_v_order_j)
+   349    229588    2164107.0      9.4      0.4              if k > 0:
+   350    229581    3112116.0     13.6      0.6                  prev_area = self.previous_area[j][k-1]
+   351    229581  252819080.0   1101.2     47.4                  area = create_area_by_join(prev_area, area)
+   352    229588    3653650.0     15.9      0.7              self.previous_area[j][k] = area
+   353                                           
+   354    210385    1769856.0      8.4      0.3          if j == 2:
+   355        13     160339.0  12333.8      0.0              P = [p for p in area.points_iter(types = ('I' if only_I else 'IB')) if p.y >= 0]
+   356        13         79.0      6.1      0.0              return P
+   357                                                   else: 
+   358    210372  182235000.0    866.3     34.1              return area.points_list(types = ('I' if only_I else 'IB'))
+
+
+
+
+Total time: 21.0326 s
+File: C:\Users\Acer\OneDrive\StDoc\proj\UDG\UDG\discrete_disk.py
+Function: create_area_by_join at line 293
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   293                                           def create_area_by_join(a: DiscreteDisk, b: DiscreteDisk) -> DiscreteDisk:
+   294                                               """Join area, increase shape if need."""
+   295                                           
+   296    229581    4579567.0     19.9      2.2      ah, aw = a.data.shape
+   297    229581    2676642.0     11.7      1.3      bh, bw = b.data.shape
+   298                                               
+   299                                               # Basic operation, result is overlap region
+   300    229581    5532465.0     24.1      2.6      min_x = max(a.x     , b.x     )
+   301    229581    3371218.0     14.7      1.6      min_y = max(a.y     , b.y     )
+   302    229581    5304479.0     23.1      2.5      max_x = min(a.x + aw, b.x + bw)
+   303    229581    4354472.0     19.0      2.1      max_y = min(a.y + ah, b.y + bh)
+   304                                           
+   305    229581    2253924.0      9.8      1.1      w = max_x - min_x
+   306    229581    2081942.0      9.1      1.0      h = max_y - min_y
+   307                                           
+   308    229581    3050951.0     13.3      1.5      if w > 0 and h > 0:
+   309    229581    2234635.0      9.7      1.1          ax = min_x - a.x
+   310    229581    2078149.0      9.1      1.0          ay = min_y - a.y
+   311    229581    2028063.0      8.8      1.0          bx = min_x - b.x
+   312    229581    2062944.0      9.0      1.0          by = min_y - b.y
+   313    229581   68292802.0    297.5     32.5          M = TBL_AND[a.data[ay:ay+h, ax:ax+w], b.data[by:by+h, bx:bx+w]]
+   314                                               else:
+   315                                                   M = DISK_NONE
+   316                                           
+   317    229581    3589814.0     15.6      1.7      if a.rest == MODE_O and b.rest == MODE_O:
+   318                                                   # Both Outer
+   319      2047      21664.0     10.6      0.0          if M is DISK_NONE:
+   320                                                       return DISK_OUTER
+   321                                                   else:
+   322      2047     471378.0    230.3      0.2              return DiscreteDisk(M, MODE_O, min_x, min_y, False).crop()
+   323    227534    2252748.0      9.9      1.1      elif a.rest == MODE_O or b.rest == MODE_O:
+   324                                                   # One Outer other Inner
+   325    225454    1926141.0      8.5      0.9          if M is DISK_NONE:
+   326                                                       return DISK_OUTER
+   327                                                   else:
+   328    225454    2473145.0     11.0      1.2              o = a if a.rest == MODE_O else b
+   329    225454    2475609.0     11.0      1.2              ox = min_x - o.x
+   330    225454    2053992.0      9.1      1.0              oy = min_y - o.y
+   331    225454   10906145.0     48.4      5.2              OM = o.data.copy()
+   332    225454   33512436.0    148.6     15.9              np.copyto(OM[oy:oy+h, ox:ox+w], M)
+   333    225454   38150569.0    169.2     18.1              return DiscreteDisk(OM, MODE_O, o.x, o.y, False).crop()
+   334                                               else:
+   335                                                   # Both Inner
+   336      2080      53536.0     25.7      0.0          min_x_oo = min(a.x     , b.x     )
+   337      2080      42230.0     20.3      0.0          min_y_oo = min(a.y     , b.y     )
+   338      2080      55738.0     26.8      0.0          max_x_oo = max(a.x + aw, b.x + bw)
+   339      2080      48387.0     23.3      0.0          max_y_oo = max(a.y + ah, b.y + bh)
+   340                                           
+   341      2080      24900.0     12.0      0.0          w_oo = max_x_oo - min_x_oo
+   342      2080      27146.0     13.1      0.0          h_oo = max_y_oo - min_y_oo
+   343                                                   
+   344      2080     776921.0    373.5      0.4          MOO = np.full((h_oo, w_oo), MODE_I, dtype=np.uint8)
+   345                                           
+   346      2080      32593.0     15.7      0.0          ax_oo = a.x - min_x_oo
+   347      2080      29244.0     14.1      0.0          ay_oo = a.y - min_y_oo
+   348      2080     353207.0    169.8      0.2          np.copyto(MOO[ay_oo:ay_oo+ah, ax_oo:ax_oo+aw], a.data)
+   349                                           
+   350      2080      34098.0     16.4      0.0          bx_oo = b.x - min_x_oo
+   351      2080      23632.0     11.4      0.0          by_oo = b.y - min_y_oo
+   352      2080     307837.0    148.0      0.1          np.copyto(MOO[by_oo:by_oo+bh, bx_oo:bx_oo+bw], b.data)
+   353                                           
+   354      2080      23879.0     11.5      0.0          if M is not DISK_NONE:
+   355      2080      27897.0     13.4      0.0              x_oo = min_x - min_x_oo
+   356      2080      22151.0     10.6      0.0              y_oo = min_y - min_y_oo
+   357      2080     291818.0    140.3      0.1              np.copyto(MOO[y_oo:y_oo+h, x_oo:x_oo+w], M)
+   358                                           
+   359      2080     415363.0    199.7      0.2          return DiscreteDisk(MOO, MODE_I, min_x_oo, min_y_oo, False).crop()
+
+
+
+
+Total time: 17.4152 s
+File: C:\Users\Acer\OneDrive\StDoc\proj\UDG\UDG\discrete_disk.py
+Function: points_list at line 148
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   148                                               def points_list(self, types: str = 'IB') -> list[Coordinate]:
+   149    210372  174152233.0    827.8    100.0          return list(self.points_iter(types))
+
+
+
+
+Total time: 14.4722 s
+File: C:\Users\Acer\OneDrive\StDoc\proj\UDG\UDG\discrete_disk.py
+Function: points_iter at line 127
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   127                                               def points_iter(self, types: str = 'IB'):
+   128                                                   """Iterate over points of selected types."""
+   129    210385    2092308.0      9.9      1.4          if types == 'I':
+   130    210385   32245131.0    153.3     22.3              mask = (self.data == MODE_I) 
+   131                                                   elif types == 'B':
+   132                                                       mask = (self.data == MODE_B) 
+   133                                                   elif types == 'IB' or types == 'BI':
+   134                                                       mask = (self.data == MODE_I) | (self.data == MODE_B)
+   135                                                   else:
+   136                                                       raise ValueError('Not supported types: {types}')
+   137                                                   
+   138    210385   63321071.0    301.0     43.8          ys, xs = np.nonzero(mask)
+   139    210385   11410538.0     54.2      7.9          values = self.data[ys, xs]
+   140    210385    2233202.0     10.6      1.5          x0, y0 = self.x, self.y
+   141    421542   16739601.0     39.7     11.6          for iy, ix, val in zip(ys, xs, values):
+   142    211157   16680180.0     79.0     11.5              yield Coordinate(x0 + ix, y0 + iy, val)
+
+
+
+
+Total time: 4.27874 s
+File: C:\Users\Acer\OneDrive\StDoc\proj\UDG\UDG\udg.py
+Function: clear_previous_area at line 109
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   109                                               def clear_previous_area(self, order_index: int):
+   110    210387    4978324.0     23.7     11.6          fill = [DISK_NONE] * (self.n - order_index)
+   111   2103870   16399521.0      7.8     38.3          for row in self.previous_area:
+   112   1893483   21409599.0     11.3     50.0              row[order_index:] = fill
+
+
+
+
+Total time: 0.648854 s
+File: C:\Users\Acer\OneDrive\StDoc\proj\UDG\UDG\discrete_disk.py
+Function: _get_from_disk_cache at line 81
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    81                                           def _get_from_disk_cache(radius: int, connected: bool) -> np.ndarray:
+    82    229588    3019475.0     13.2     46.5      if radius not in _disk_cache:
+    83         1          8.0      8.0      0.0          r = radius + 1  # radius + margin=floor(sqrt(2))
+    84                                                   # + 1 for 0; C = Connected, D = Disconnected
+    85         1        561.0    561.0      0.0          C = np.full((2 * r + 1, 2 * r + 1), MODE_I, dtype=np.uint8)
+    86         1        163.0    163.0      0.0          D = np.full((2 * r + 1, 2 * r + 1), MODE_O, dtype=np.uint8)
+    87        19        126.0      6.6      0.0          for ix in range(r + 1):
+    88       189       1199.0      6.3      0.0              for iy in range(ix, r + 1):
+    89       171       6448.0     37.7      0.1                  if DS[idx(ix, iy)] >= ROS[radius]:
+    90        37       4884.0    132.0      0.1                      symmetric_set(C, ix, iy, r, MODE_O)
+    91        37       4884.0    132.0      0.1                      symmetric_set(D, ix, iy, r, MODE_I)
+    92       134       4790.0     35.7      0.1                  elif DS[idx(ix, iy)] > RIS[radius]:
+    93        37       5215.0    140.9      0.1                      symmetric_set(C, ix, iy, r, MODE_B)
+    94        37       5115.0    138.2      0.1                      symmetric_set(D, ix, iy, r, MODE_B)
+    95                                           
+    96         1         38.0     38.0      0.0          C.setflags(write=False)
+    97         1         16.0     16.0      0.0          D.setflags(write=False)
+    98         1         13.0     13.0      0.0          _disk_cache[radius] = (C, D)
+    99                                               
+   100    229588    3435604.0     15.0     52.9      return _disk_cache[radius][0 if connected else 1]
+
+
+
+Total time: 0.430978 s
+File: C:\Users\Acer\OneDrive\StDoc\proj\UDG\UDG\discrete_disk.py
+Function: crop at line 218
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   218                                               def crop(self) -> "DiscreteDisk":
+   219                                                   """Crop the matrix by removing outer rows/columns with values equal to self.rest."""
+   220    229581    2685831.0     11.7     62.3          if not opts.crop:
+   221    229581    1623951.0      7.1     37.7              return self
+   222                                                   
+   223                                                   mask = self.data != self.rest
+   224                                           
+   225                                                   # Find bounds
+   226                                                   rows = np.any(mask, axis=1)
+   227                                                   cols = np.any(mask, axis=0)
+   228                                           
+   229                                                   if not np.any(rows) or not np.any(cols):
+   230                                                       # All values are rest, return minimal disk
+   231                                                       return DISK_INNER if self.rest == MODE_I else DISK_OUTER
+   232                                           
+   233                                                   y0, y1 = np.where(rows)[0][[0, -1]]
+   234                                                   x0, x1 = np.where(cols)[0][[0, -1]]
+   235                                           
+   236                                                   self.data = self.data[y0:y1+1, x0:x1+1]
+   237                                                   self.x += x0
+   238                                                   self.y += y0
+   239                                           
+   240                                                   return self
+
+
+Total time: 0.212626 s
+File: C:\Users\Acer\OneDrive\StDoc\proj\UDG\UDG\udg.py
+Function: neighbors at line 92
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    92                                               def neighbors(self, v: int):
+    93    210400    2126257.0     10.1    100.0          return self.adj[v]
+
+Total time: 0.739933 s
+File: C:\Users\Acer\OneDrive\StDoc\proj\UDG\UDG\udg.py
+Function: set_coordinate at line 103
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   103                                               def set_coordinate(self, v: int, x: int, y: int, type: np.uint8 = MODE_U):
+   104                                                   """Set coordinates for vertex ``v``."""
+   105    210387    2634786.0     12.5     35.6          v = self.coordinates[v]
+   106    210387    3377920.0     16.1     45.7          v.x, v.y, v.mode = x, y, type
+   107    210387    1386626.0      6.6     18.7          return self

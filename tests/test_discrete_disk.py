@@ -4,6 +4,7 @@ import textwrap
 import numpy as np
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from discrete_disk import DiscreteDisk, Coordinate, MODE_I, MODE_B, MODE_O, DISK_INNER, DISK_OUTER, create_area_by_join
+import discrete_disk
 
 TEST_SHOW = np.array(['-', '=', '+'])
 
@@ -44,6 +45,7 @@ class TestDiscreteDisk(unittest.TestCase):
         """)
 
     def test_crop_O(self):
+        discrete_disk.opts.crop = True
         d = DiscreteDisk(
             data=np.array([
                 [MODE_O,MODE_O,MODE_O],
@@ -55,6 +57,7 @@ class TestDiscreteDisk(unittest.TestCase):
                 ],
                 dtype=np.uint8),
             rest=MODE_O, x = 1, y = 2).crop()
+        discrete_disk.opts.crop = False
         self.assertEqual(d.x, 1) 
         self.assertEqual(d.y, 4)
         self.assertEqual(d.data.shape, (3, 2))
@@ -66,6 +69,7 @@ class TestDiscreteDisk(unittest.TestCase):
         """)
 
     def test_crop_I(self):
+        discrete_disk.opts.crop = True
         d = DiscreteDisk(
             data=np.array([
                 [MODE_I,MODE_O,MODE_O],
@@ -78,6 +82,7 @@ class TestDiscreteDisk(unittest.TestCase):
                 ],
                 dtype=np.uint8),
             rest=MODE_I, x = 1, y = 2).crop()
+        discrete_disk.opts.crop = False
         self.assertEqual(d.x, 2) 
         self.assertEqual(d.y, 2)
         self.assertEqual(d.data.shape, (4, 2))
@@ -391,9 +396,11 @@ class TestDiscreteDisk(unittest.TestCase):
         """)
 
     def test_create_area_by_join_DC_crop(self):
+        discrete_disk.opts.crop = True
         d = create_area_by_join(
             a = DiscreteDisk.disk(radius = 3, x = -7, y =  1, connected = False),
             b = DiscreteDisk.disk(radius = 3, x = -7, y = -3, connected = True))
+        discrete_disk.opts.crop = False
         self.assertEqual(d.x, -11)
         self.assertEqual(d.y, - 7)
         self.assertEqual(d.data.shape, (8, 9))
@@ -489,7 +496,7 @@ class TestDiscreteDisk(unittest.TestCase):
             Coordinate(-1,  0, MODE_I), Coordinate(0,  0, MODE_I), Coordinate(1,  0, MODE_I),
             Coordinate(-1,  1, MODE_I), Coordinate(0,  1, MODE_I), Coordinate(1,  1, MODE_I)
         ]
-        self.assertEqual(d.points_list((MODE_I,)), expected)
+        self.assertEqual(d.points_list('I'), expected)
 
     def test_iter_points_order(self):
         d = DiscreteDisk.disk(3)
@@ -498,7 +505,7 @@ class TestDiscreteDisk(unittest.TestCase):
             Coordinate(-1,  0, MODE_I), Coordinate(0,  0, MODE_I), Coordinate(1,  0, MODE_I),
             Coordinate(-1,  1, MODE_I), Coordinate(0,  1, MODE_I), Coordinate(1,  1, MODE_I)
         ]
-        self.assertEqual(d.points_list((MODE_I,)), expected)
+        self.assertEqual(d.points_list('I'), expected)
 
 if __name__ == '__main__':
     unittest.main()
