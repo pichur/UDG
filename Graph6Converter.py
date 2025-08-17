@@ -20,12 +20,23 @@ def edge_list_to_graph(edge_list: str) -> nx.Graph:
     edges_part = parts[1]
     if edges_part.strip() == "":
         return G
+
     # remove spaces around semicolons and commas
     edges = [e.strip() for e in edges_part.split(";") if e.strip()]
+
+    # check min vertex, 0 or 1
+    min_vertex_index = 0
     for e in edges:
         u_str, v_str = [x.strip() for x in e.split(",")]
-        u = int(u_str) - 1
-        v = int(v_str) - 1
+        u = int(u_str)
+        v = int(v_str)
+        min_vertex_index = min(min_vertex_index, u)
+        min_vertex_index = min(min_vertex_index, v)
+
+    for e in edges:
+        u_str, v_str = [x.strip() for x in e.split(",")]
+        u = int(u_str) - min_vertex_index
+        v = int(v_str) - min_vertex_index
         if u < 0 or v < 0 or u >= n or v >= n:
             raise ValueError("Vertex index out of range")
         if u != v:
