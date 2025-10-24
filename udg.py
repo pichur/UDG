@@ -9,7 +9,7 @@ import Graph6Converter
 import numpy as np
 import matplotlib.pyplot as plt
 import discrete_disk
-from discrete_disk import create_area_by_join, DiscreteDisk, Coordinate, MODES, MODE_U, MODE_I, MODE_B, DISK_NONE
+from discrete_disk import create_area_by_join, DiscreteDisk, Coordinate, MODES, MODE_U, MODE_I, MODE_B, MODE_O, DISK_NONE
 from dataclasses import dataclass
 
 
@@ -26,11 +26,13 @@ class Graph:
     """Simple adjacency list graph that can be built from an integer number
     of vertices or from a :class:`networkx.Graph` instance."""
     verbose: bool
+    limit_points:bool = True
 
     unit: int
     n: int
     adj: list[list[int]]
 
+    order_mode: str = 'DD'
     order: list[int]
     coordinates: list[Coordinate]
 
@@ -100,10 +102,10 @@ class Graph:
         self.verbose = verbose
         return self
     
-    def set_coordinate(self, v: int, x: int, y: int, type: np.uint8 = MODE_U):
+    def set_coordinate(self, v: int, x: int, y: int, mode: np.uint8 = MODE_U):
         """Set coordinates for vertex ``v``."""
         v = self.coordinates[v]
-        v.x, v.y, v.mode = x, y, type
+        v.x, v.y, v.mode = x, y, mode
         return self
     
     def clear_previous_area(self, order_index: int):
@@ -157,6 +159,47 @@ class Graph:
         if fail:
             print("FAIL: some edges are not in the unit disk range or some non-edges are in the range.")
 
+    def print_vertex_distances(self):
+        # Calculate max range
+        print()
+        print(f'result_I = {self.result_I:7d}')
+        print(f'result_B = {self.result_B:7d}')
+
+        print()
+        max_distance = 0
+        for i in range(self.n):
+            for j in range(i + 1, self.n):
+                for d in range(discrete_disk.RO[self.unit] * self.n):
+                    if self.vertex_distances[i][j][d] in (MODE_I, MODE_B):
+                        max_distance = max(max_distance, d)
+        header = f"  {self.n:3d} x {self.unit:3d} >"
+        for d in range(1, max_distance):
+            if d % self.unit == 0:
+                c = '|'
+            elif d % 10 == 0:
+                c = '*'
+            elif d % 5 == 0:
+                c = '.'
+            else:
+                c = ' '
+            header += c
+        print(header)
+
+        for i in range(self.n):
+            for j in range(i + 1, self.n):
+                edge_mark = '-' if self.is_edge(i, j) else ' '
+                row = f"   [{i}]{edge_mark}[{j}] :"
+                for d in range(max_distance):
+                    if self.vertex_distances[i][j][d] == MODE_I:
+                        c = '█'
+                    elif self.vertex_distances[i][j][d] == MODE_B:
+                        c = '▒'
+                    else:
+                        c = ' '
+                    row += c
+                print(row)
+        print()
+
     def draw(self, draw_disks: bool = False, ax=None):
         colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
         if ax is None:
@@ -206,8 +249,7 @@ class Graph:
                 print("Graph is full, it is a UDG.")
             return True
         
-        #self.calculate_order_path()
-        self.calculate_order_degree_level(desc = False)
+        self.apply_order()
 
         while True:
             if self.verbose:
@@ -261,12 +303,40 @@ class Graph:
                 print(f"  {'Inner' if only_I else 'All'}")
             count_I: int = 0
             count_B: int = 0
-            result = self.place_next_vertex(0, only_I, count_I, count_B)
+            result = self.place_next_vertex(0, False, only_I, count_I, count_B)
             if result == YES:
                 return YES
         return result
     
-    def place_next_vertex(self, j: int, only_I: bool, count_I: int, count_B: int):
+    def calculate_vertex_distances(self):
+        self.result_I = 0
+        self.result_B = 0
+        self.vertex_distances = [[[MODE_O for _ in range(discrete_disk.RO[self.unit] * self.n)] for _ in range(self.n)] for _ in range(self.n)]
+
+        self.apply_order()
+
+        self.place_next_vertex(0, True, False, 0, 0)
+    
+    def store_vertex_distances(self, mode: np.uint8 = MODE_U):
+        if self.verbose:
+            msg = ""
+            for i in range(self.n):
+                coord = self.coordinates[i]
+                msg += f"{i}:({coord.x:3d},{coord.y:3d}) "
+            print(msg)
+        for i in range(self.n):
+            for j in range(i + 1, self.n):
+                coord_i = self.coordinates[i]
+                coord_j = self.coordinates[j]
+                distance = sqrt((coord_i.x - coord_j.x)**2 + (coord_i.y - coord_j.y)**2)
+                distanceF = int(np.floor(distance))
+                distanceC = int(np.ceil (distance))
+                if self.vertex_distances[i][j][distanceF] != MODE_I:
+                    self.vertex_distances[i][j][distanceF] = mode
+                if self.vertex_distances[i][j][distanceC] != MODE_I:
+                    self.vertex_distances[i][j][distanceC] = mode
+    
+    def place_next_vertex(self, j: int, calc_D: bool, only_I: bool, count_I: int, count_B: int):
         v_index = self.order[j]
 
         P = self.candidate_points(j, only_I, count_I, count_B)
@@ -289,20 +359,30 @@ class Graph:
                     self.last_verbose_time = time.time()
                     print("  placing " + self.state_info(only_I, j))
             if j < self.n - 1:
-                result = self.place_next_vertex(j + 1, only_I, count_I + incr_I, count_B + incr_B)
+                result = self.place_next_vertex(j + 1, calc_D, only_I, count_I + incr_I, count_B + incr_B)
                 if result == YES:
                     return YES
                 if result == TRIGRAPH:
                     if not only_I:
                         return TRIGRAPH
-                    found_trigraph=True
+                    if not calc_D:
+                        found_trigraph=True
             else:
                 # if self.is_udg_realization():
                 if count_I + incr_I == self.n:
-                    return YES
+                    if calc_D:
+                        self.store_vertex_distances(MODE_I)
+                        self.result_I += 1
+                    else:
+                        return YES
                 if not only_I:
-                    return TRIGRAPH
-                found_trigraph = True
+                    if calc_D:
+                        self.store_vertex_distances(MODE_B)
+                        self.result_B += 1
+                    else:
+                        return TRIGRAPH
+                if not calc_D:
+                    found_trigraph = True
         
         if not found_trigraph:
             return NO
@@ -324,17 +404,16 @@ class Graph:
         return all(coord.mode == MODE_I for coord in self.coordinates)
     
     def candidate_points(self, j: int, only_I: bool, count_I: int, count_B: int) -> list[Coordinate]:
-        P = []
         if j == 0:
+            P = []
             P.append(Coordinate(x = 0, y = 0, mode = MODE_I))
             return P
         if j == 1:
-            if only_I:
-                for x in range(0, discrete_disk.RI[self.unit]):
-                    P.append(Coordinate(x = x, y = 0, mode = MODE_I))
+            area = DiscreteDisk.disk(self.unit, 0, 0, connected = True)
+            if self.limit_points:
+                P = [p for p in area.points_iter(types = ('I' if only_I else 'IB')) if p.y == 0 and p.x >= 0]
             else:
-                for x in range(0, discrete_disk.RO[self.unit]):
-                    P.append(Coordinate(x = x, y = 0, mode = MODE_I if x <= discrete_disk.RI[self.unit] else MODE_B))
+                P = [p for p in area.points_iter(types = ('I' if only_I else 'IB')) if p.y >= 0 and p.x >= 0]
             return P
 
         i = j - 2
@@ -348,14 +427,31 @@ class Graph:
             area = DiscreteDisk.disk(self.unit, coord_v_order_k.x, coord_v_order_k.y, connected = self.order[k] in neighbors_v_order_j)
             if k > 0:
                 prev_area = self.previous_area[j][k-1]
-                area = create_area_by_join(prev_area, area)
+                area = create_area_by_join(prev_area, area) 
             self.previous_area[j][k] = area
 
         if j == 2:
-            P = [p for p in area.points_iter(types = ('I' if only_I else 'IB')) if p.y >= 0]
-            return P
+            if self.limit_points:
+                P = [p for p in area.points_iter(types = ('I' if only_I else 'IB')) if p.y >= 0]
+                return P
+            else:
+                return area.points_list(types = ('I' if only_I else 'IB'))
         else: 
             return area.points_list(types = ('I' if only_I else 'IB'))
+
+    def apply_order(self):
+        """Choose and apply the appropriate ordering mode based on order_mode setting."""
+        if self.order_mode == 'P':
+            self.calculate_order_path()
+        elif self.order_mode == 'DA':
+            self.calculate_order_degree_level(desc = False)
+        elif self.order_mode == 'DD':
+            self.calculate_order_degree_level(desc = True)
+        else:
+            self.calculate_order_same()
+
+    def calculate_order_same(self):
+        self.order = range(self.n)
 
     def calculate_order_path(self):
         """Calculate a work order of the graph starting from any p3 inducted subgraph."""
@@ -593,6 +689,12 @@ def main() -> None:
         "-u", "--unit", type=int,
         help="Start unit")
     parser.add_argument(
+        "-a", "--order", type=str, default="DD",
+        help="Order mode")
+    parser.add_argument(
+        "-n", "--not_limit_points", action="store_true",
+        help="Turn off limiting points")
+    parser.add_argument(
         "graph", metavar="GRAPH", nargs="?", default="",
         help="Input graph description")
 
@@ -623,6 +725,12 @@ def main() -> None:
     if args.unit:
         g.set_unit(args.unit)
 
+    if args.order:
+        g.order_mode = args.order
+        
+    if args.not_limit_points:
+        g.limit_points = False
+
     if check:
         output = g.udg_recognition()
         print("Graph is " + ("" if output else "NOT ") + "a Unit Disk Graph (UDG).")
@@ -638,4 +746,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

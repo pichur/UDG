@@ -7,7 +7,7 @@ from networkx.readwrite.graph6 import to_graph6_bytes
 """Convert between custom edge-list format and canonical graph6."""
 
 def edge_list_to_graph(edge_list: str) -> nx.Graph:
-    """Parse edge-list formatted as 'n: u_1,v_1 ; u_2,v_2 ...'."""
+    """Parse edge-list formatted as 'n: u_1,v_1 u_2,v_2 ...'."""
     edge_list = edge_list.strip()
     if not edge_list:
         raise ValueError("Empty graph description")
@@ -22,15 +22,20 @@ def edge_list_to_graph(edge_list: str) -> nx.Graph:
         return G
 
     # remove spaces around semicolons and commas
-    edges = [e.strip() for e in edges_part.split(";") if e.strip()]
+    edges = [e.strip() for e in edges_part.split(" ") if e.strip()]
 
     # check min vertex, 0 or 1
+    first_vertex = True
     min_vertex_index = 0
     for e in edges:
         u_str, v_str = [x.strip() for x in e.split(",")]
         u = int(u_str)
         v = int(v_str)
-        min_vertex_index = min(min_vertex_index, u)
+        if first_vertex:
+            min_vertex_index = u
+            first_vertex = False
+        else:
+            min_vertex_index = min(min_vertex_index, u)
         min_vertex_index = min(min_vertex_index, v)
 
     for e in edges:
@@ -57,7 +62,7 @@ def g6_to_graph(g6: str) -> nx.Graph:
 def graph_to_edge_list(G: nx.Graph) -> str:
     n = len(G)
     edges = sorted({tuple(sorted((u + 1, v + 1))) for u, v in G.edges()})
-    edges_str = " ; ".join(f"{u},{v}" for u, v in edges)
+    edges_str = " ".join(f"{u},{v}" for u, v in edges)
     return f"{n}: {edges_str}" if edges_str else f"{n}:"
 
 def graph_to_g6(G: nx.Graph) -> str:

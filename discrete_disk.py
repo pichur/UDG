@@ -35,7 +35,7 @@ class Options:
     crop: bool = False
 opts = Options()
 
-def R_CALC():
+def R_CALC(mode:str = '1'):
     """Calculate the ranges for discrete disks."""
     global RI, RO, RIS, ROS
     RI  = np.empty(N, dtype='int64')
@@ -47,14 +47,20 @@ def R_CALC():
     RIS[0] = 0
     ROS[0] = 2
     for i in range(1,N):
-        a = i**2
-        b = i*DSQRT2
-        c = 2
-        RI [i] = np.floor(np.sqrt(a - b + c))
-        RO [i] = np.floor(np.sqrt(a + b + c))
-        RIS[i] = np.floor(a - b + c)
-        ROS[i] = np.floor(a + b + c)
-R_CALC()
+        if mode == '1':
+            a = i**2
+            b = i*DSQRT2
+            c = 2
+            RI [i] = np.floor(np.sqrt(a - b + c))
+            RO [i] = np.floor(np.sqrt(a + b + c))
+            RIS[i] = np.floor(a - b + c)
+            ROS[i] = np.floor(a + b + c)
+        else:
+            RI [i] = i - 1
+            RO [i] = i + 1
+            RIS[i] = RI[i]**2
+            ROS[i] = RO[i]**2
+R_CALC(mode='1')
 
 idx = lambda i,j: i*N - i*(i+1)//2 + (j-i)  # i<j
 

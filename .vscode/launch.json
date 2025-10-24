@@ -27,6 +27,19 @@
             ]
         },
         {
+            "name": "cvd",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "cvd.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-g",
+                "BW",
+                "-u",
+                "4"
+            ]
+        },
+        {
             "name": "DiscreteDisk",
             "type": "debugpy",
             "request": "launch",
