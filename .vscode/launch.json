@@ -40,6 +40,19 @@
             ]
         },
         {
+            "name": "vpod",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "vpod.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-g",
+                "BW",
+                "-u",
+                "4"
+            ]
+        },
+        {
             "name": "DiscreteDisk",
             "type": "debugpy",
             "request": "launch",

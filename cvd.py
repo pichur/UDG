@@ -28,7 +28,7 @@ def main() -> None:
         help="Turn off limiting points")
     parser.add_argument(
         "graph", metavar="GRAPH", nargs="?", default="",
-        help="Input graph description (multiple g6 graphs can be separated by ;)")
+        help="Input graph description (multiple graphs can be separated by ;)")
 
     args = parser.parse_args()
 
