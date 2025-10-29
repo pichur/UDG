@@ -62,5 +62,18 @@
                 "-v"
             ]
         },
+        {
+            "name": "ug",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "ug.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-g",
+                "-c",
+                "-p",
+                "Cq"
+            ]
+        },
     ]
 }

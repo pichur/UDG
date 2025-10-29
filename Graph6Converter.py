@@ -74,8 +74,12 @@ def canonize_graph(G: nx.Graph) -> nx.Graph:
     g_ig = ig.Graph.from_networkx(G)
     # zwraca permutację: indeks -> nowa_etykieta
     perm = g_ig.canonical_permutation(color=None)   # uwzględnisz 'color', jeżeli masz typy węzłów
-    mapping = {v['_nx_name']: i for i, v in zip(perm, g_ig.vs)}  # stare_id -> nowe_id
-    return nx.relabel_nodes(G, mapping, copy=True)
+    mapping = {v.index: i for i, v in zip(perm, g_ig.vs)}  # stare_id -> nowe_id
+    g_releballed = nx.relabel_nodes(G, mapping, copy=True)
+    H = nx.Graph()
+    H.add_nodes_from(sorted(g_releballed.nodes()))
+    H.add_edges_from(g_releballed.edges())
+    return H
 
 def edge_list_to_graph6(edge_list: str, canonical: bool = False) -> str:
     """Convert edge-list to graph6."""

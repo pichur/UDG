@@ -119,21 +119,4 @@ def main() -> None:
         g.print_vertex_distances()
 
 if __name__ == "__main__":
-    # main()
-    # --- EXAMPLE 1: P4 ---
-    # G = nx.path_graph(4)  # nodes 0-1-2-3
-    G = nx.from_graph6_bytes(b"CU")  # P4 in graph6
-    print("Vertex pair orbits in P4:")
-    print_vertex_pair_orbits(vertex_pair_orbits(G))
-
-    # --- EXAMPLE 2: loading from graph6 (e.g. K4 = b'C~') ---
-    g6 = b"C~"
-    H = nx.from_graph6_bytes(g6)
-    print("\nVertex pair orbits in K4:")
-    print_vertex_pair_orbits(vertex_pair_orbits(H))
-
-    # --- EXAMPLE 3: S4 ---
-    # S4 = nx.star_graph(4)  # nodes 0-1,0-2,0-3,0-4
-    S4 = nx.from_graph6_bytes(b"D?{")
-    print("\nVertex pair orbits in S4:")
-    print_vertex_pair_orbits(vertex_pair_orbits(S4))
+    main()
