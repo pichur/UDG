@@ -114,7 +114,7 @@ def process_graph(graph_input:str, g6:bool=True, unit:int=4, ignore_range_check:
 
     if print_result:
         header = udg.get_node_distances_info(True)
-        print(f"\n     :       : {header}    Time")
+        print(f"\n     :       : {header}       Time")
     
     result = []
     for i, orbit in enumerate(orbits):
@@ -137,11 +137,11 @@ def process_graph(graph_input:str, g6:bool=True, unit:int=4, ignore_range_check:
             not_default_range_b = short_range_b != default_range_b
             not_continueous_range_i = range_i is not None and not range_i[2]
             not_continueous_range_b = range_b is not None and not range_b[2]
-            attention_mark = ' !!!' if not_default_range_b or not_continueous_range_i or not_continueous_range_b else ''
-            range_mark         = ' R' if not_default_range_b else ''
+            attention_mark = '  !!!' if not_default_range_b or not_continueous_range_i or not_continueous_range_b else ''
+            range_mark = (' ' + ('R' if distance == 1 else 'r')) if not_default_range_b else ''
             continueous_i_mark = ' I' if not_continueous_range_i else ''
             continueous_b_mark = ' B' if not_continueous_range_b else ''
-            print(f"{orbit_letter} [{distance}]: {u} {edge_indicator} {v} : {msg}    {iteration_time:.4f} s{attention_mark}{range_mark}{continueous_i_mark}{continueous_b_mark}")
+            print(f"{orbit_letter} [{distance}]: {u} {edge_indicator} {v} : {msg}    {iteration_time:7.2f} s{attention_mark}{range_mark}{continueous_i_mark}{continueous_b_mark}")
 
     stop_time = time.time()
     if print_result:
