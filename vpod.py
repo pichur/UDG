@@ -67,11 +67,12 @@ def print_vertex_pair_orbits(orbits):
     for i, orbit in enumerate(orbits):
         print_vertex_pair_orbit(orbit, i)
 
-def get_min_max_indexes(values:list[int], value:int):
+def get_ranges(values:list[int], border:bool):
     """Get min and max indexes of a specific value in a list, ensuring all intermediate values are the same."""
+    search_values = [MODE_I, MODE_B] if border else [MODE_I]
     min_index = max_index = None
     for i, val in enumerate(values):
-        if val == value:
+        if val in search_values:
             if min_index is None:
                 min_index = i
             max_index = i
@@ -82,12 +83,8 @@ def get_min_max_indexes(values:list[int], value:int):
     # Check if there are any different values between min and max indices
     if min_index is not None and max_index is not None and min_index != max_index:
         for i in range(min_index + 1, max_index):
-            if values[i] != value:
-                if value == MODE_B and values[i] == MODE_I:
-                    # Allow MODE_I between MODE_B indices
-                    continue
-                else:
-                    raise ValueError(f"Found different value {values[i]} at index {i} between min index {min_index} and max index {max_index}")
+            if values[i] not in search_values:
+                raise ValueError(f"Found different value {values[i]} at index {i} between min index {min_index} and max index {max_index}")
     
     return (min_index, max_index)
         
@@ -123,13 +120,18 @@ def process_graph(graph_input:str, g6:bool=True, unit:int=4, print_result:bool=F
         nodes = orbit_pairs[0]
         node_distances = udg.calculate_node_distances(nodes)
 
-        result.append((orbit_type, distance, orbit_pairs, get_min_max_indexes(node_distances, MODE_I), get_min_max_indexes(node_distances, MODE_B)))
+        range_i = get_ranges(node_distances, False)
+        range_b = get_ranges(node_distances, True )
+        result.append((orbit_type, distance, orbit_pairs, range_i, range_b))
         iteration_time = time.time() - iteration_start_time
         if print_result:
             msg = udg.get_node_distances_info()
             u, v = nodes
             edge_indicator = '-' if orbit_type == 'E' else ' '
-            print(f"{orbit_letter} [{distance}]: {u} {edge_indicator} {v} : {msg}    {iteration_time:.4f} s")
+            default_range_b = (0 if distance == 1 else unit - 1, distance * unit + 1)
+            not_default_range_b = range_b != default_range_b
+            range_mark = ' !!!' if not_default_range_b else ''
+            print(f"{orbit_letter} [{distance}]: {u} {edge_indicator} {v} : {msg}    {iteration_time:.4f} s{range_mark}")
 
     stop_time = time.time()
     if print_result:
@@ -148,6 +150,9 @@ def main() -> None:
         "-e", "--edge_list", action="store_true",
         help="Check graph given as edge list")
     parser.add_argument(
+        "-f", "--file", action="store_true",
+        help="Read graphs from file (one graph6 per line)")
+    parser.add_argument(
         "-v", "--verbose", action="store_true",
         help="Enable verbose output for debugging")
     parser.add_argument(
@@ -158,15 +163,19 @@ def main() -> None:
         help="Start unit")
     parser.add_argument(
         "graph", metavar="GRAPH", nargs="?", default="",
-        help="Input graph description (multiple graphs can be separated by ;)")
+        help="Input graph description (multiple graphs can be separated by ;) or file if -f is used)")
 
     args = parser.parse_args()
 
-    # Split input by semicolons for multiple graphs
-    if ';' in args.graph:
-        graphs_input = [g.strip() for g in args.graph.split(';') if g.strip()]
+    if args.file:
+        with open(args.graph, 'r') as f:
+            graphs_input = [line.strip() for line in f if line.strip()]
     else:
-        graphs_input = [args.graph] if args.graph else []
+        # Split input by semicolons for multiple graphs
+        if ';' in args.graph:
+            graphs_input = [g.strip() for g in args.graph.split(';') if g.strip()]
+        else:
+            graphs_input = [args.graph] if args.graph else []
 
     if not graphs_input:
         print("No graph provided")
