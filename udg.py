@@ -252,7 +252,7 @@ class Graph:
                 print(row)
         print()
 
-    def get_node_distances_info(self, header: bool = False):
+    def get_node_distances_info(self, header: bool = False, chars:str="█▒ "):
         maximum_vertex_edge_distance = self.get_maximum_vertex_edge_distance()
         maximum_vertex_distance = maximum_vertex_edge_distance * self.unit + 1
 
@@ -276,11 +276,11 @@ class Graph:
         for d in range(maximum_vertex_distance+1):
             if d < len(self.node_distances):
                 if self.node_distances[d] == MODE_I:
-                    c = '█'
+                    c = chars[0] if len(chars) > 0 else '█'
                 elif self.node_distances[d] == MODE_B:
-                    c = '▒'
+                    c = chars[1] if len(chars) > 1 else '▒'
                 elif self.node_distances[d] == MODE_O:
-                    c = ' '
+                    c = chars[2] if len(chars) > 2 else ' '
                 else:
                     c = '?'
             else:

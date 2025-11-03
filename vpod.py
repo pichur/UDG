@@ -67,7 +67,7 @@ def print_vertex_pair_orbits(orbits):
     for i, orbit in enumerate(orbits):
         print_vertex_pair_orbit(orbit, i)
 
-def get_ranges(values:list[int], border:bool):
+def get_ranges(values:list[int], border:bool, ignore_range_check:bool=False) -> tuple[int,int,bool]|None:
     """Get min and max indexes of a specific value in a list, ensuring all intermediate values are the same."""
     search_values = [MODE_I, MODE_B] if border else [MODE_I]
     min_index = max_index = None
@@ -80,15 +80,19 @@ def get_ranges(values:list[int], border:bool):
     if min_index is None:
         return None
     
+    continous = True
     # Check if there are any different values between min and max indices
     if min_index is not None and max_index is not None and min_index != max_index:
         for i in range(min_index + 1, max_index):
             if values[i] not in search_values:
-                raise ValueError(f"Found different value {values[i]} at index {i} between min index {min_index} and max index {max_index}")
+                if ignore_range_check:
+                    continous = False
+                else:
+                    raise ValueError(f"Found different value {values[i]} at index {i} between min index {min_index} and max index {max_index}")
     
-    return (min_index, max_index)
-        
-def process_graph(graph_input:str, g6:bool=True, unit:int=4, print_result:bool=False, verbose:bool=False):
+    return (min_index, max_index, continous)
+
+def process_graph(graph_input:str, g6:bool=True, unit:int=4, ignore_range_check:bool=False, print_result:bool=False, chars:str="█▒ ", verbose:bool=False):
     start_time = time.time()
     
     if g6:
@@ -120,18 +124,24 @@ def process_graph(graph_input:str, g6:bool=True, unit:int=4, print_result:bool=F
         nodes = orbit_pairs[0]
         node_distances = udg.calculate_node_distances(nodes)
 
-        range_i = get_ranges(node_distances, False)
-        range_b = get_ranges(node_distances, True )
+        range_i = get_ranges(node_distances, False, ignore_range_check)
+        range_b = get_ranges(node_distances, True , ignore_range_check)
         result.append((orbit_type, distance, orbit_pairs, range_i, range_b))
         iteration_time = time.time() - iteration_start_time
         if print_result:
-            msg = udg.get_node_distances_info()
+            msg = udg.get_node_distances_info(False, chars)
             u, v = nodes
             edge_indicator = '-' if orbit_type == 'E' else ' '
             default_range_b = (0 if distance == 1 else unit - 1, distance * unit + 1)
-            not_default_range_b = range_b != default_range_b
-            range_mark = ' !!!' if not_default_range_b else ''
-            print(f"{orbit_letter} [{distance}]: {u} {edge_indicator} {v} : {msg}    {iteration_time:.4f} s{range_mark}")
+            short_range_b = None if range_b is None else (range_b[0], range_b[1])
+            not_default_range_b = short_range_b != default_range_b
+            not_continueous_range_i = range_i is not None and not range_i[2]
+            not_continueous_range_b = range_b is not None and not range_b[2]
+            attention_mark = ' !!!' if not_default_range_b or not_continueous_range_i or not_continueous_range_b else ''
+            range_mark         = ' R' if not_default_range_b else ''
+            continueous_i_mark = ' I' if not_continueous_range_i else ''
+            continueous_b_mark = ' B' if not_continueous_range_b else ''
+            print(f"{orbit_letter} [{distance}]: {u} {edge_indicator} {v} : {msg}    {iteration_time:.4f} s{attention_mark}{range_mark}{continueous_i_mark}{continueous_b_mark}")
 
     stop_time = time.time()
     if print_result:
@@ -159,6 +169,12 @@ def main() -> None:
         "-p", "--print", action="store_true",
         help="Print output")
     parser.add_argument(
+        "-c", "--chars", default="█▒ ",
+        help="Default chararcters for print ranges")
+    parser.add_argument(
+        "-i", "--ignore", action="store_true",
+        help="Ignore ranges check")
+    parser.add_argument(
         "-u", "--unit", type=int,
         help="Start unit")
     parser.add_argument(
@@ -185,7 +201,7 @@ def main() -> None:
         if print:
             print(f"\n=== Processing Graph {i+1}/{len(graphs_input)} ===")
             print(f"Input: {graph_input}")
-        process_graph(graph_input, args.graph6, args.unit, args.print, args.verbose)
+        process_graph(graph_input, args.graph6, args.unit, args.ignore, args.print, args.chars,args.verbose)
 
 if __name__ == "__main__":
     main()
