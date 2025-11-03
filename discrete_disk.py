@@ -123,6 +123,21 @@ class DiscreteDisk:
     DISK_NONE  : ClassVar["DiscreteDisk"]
     DISK_OUTER : ClassVar["DiscreteDisk"]
     DISK_INNER : ClassVar["DiscreteDisk"]
+
+    operation_disk_counter: ClassVar[int] = 0
+    
+    @classmethod
+    def get_operation_disk_counter(cls) -> int:
+        return cls.operation_disk_counter
+
+    @classmethod
+    def increment_operation_disk_counter(cls) -> int:
+        cls.operation_disk_counter += 1
+        return cls.operation_disk_counter
+
+    @classmethod
+    def reset_operation_disk_counter(cls) -> None:
+        cls.operation_disk_counter = 0
     
     @classmethod
     def disk(cls, radius: int = 4, x: int = 0, y: int = 0, connected: bool = True) -> "DiscreteDisk":
@@ -218,6 +233,8 @@ class DiscreteDisk:
                 self.data[:, :iax0] = MODE_O
                 self.data[:, iax1:] = MODE_O
 
+        DiscreteDisk.increment_operation_disk_counter()
+
         # Return self for method chaining
         return self
     
@@ -299,6 +316,8 @@ DISK_INNER = DiscreteDisk(np.full((0, 0), MODE_I, dtype=np.uint8), MODE_I, 0, 0,
 def create_area_by_join(a: DiscreteDisk, b: DiscreteDisk) -> DiscreteDisk:
     """Join area, increase shape if need."""
 
+    DiscreteDisk.increment_operation_disk_counter()
+
     ah, aw = a.data.shape
     bh, bw = b.data.shape
     
@@ -329,14 +348,16 @@ def create_area_by_join(a: DiscreteDisk, b: DiscreteDisk) -> DiscreteDisk:
     elif a.rest == MODE_O or b.rest == MODE_O:
         # One Outer other Inner
         if M is DISK_NONE:
-            return DISK_OUTER
+            # Not overlapping, return the connected disk
+            c = a if a.rest == MODE_O else b
+            return c
         else:
-            o = a if a.rest == MODE_O else b
-            ox = min_x - o.x
-            oy = min_y - o.y
-            OM = o.data.copy()
-            np.copyto(OM[oy:oy+h, ox:ox+w], M)
-            return DiscreteDisk(OM, MODE_O, o.x, o.y, False).crop()
+            c = a if a.rest == MODE_O else b
+            cx = min_x - c.x
+            cy = min_y - c.y
+            OM = c.data.copy()
+            np.copyto(OM[cy:cy+h, cx:cx+w], M)
+            return DiscreteDisk(OM, MODE_O, c.x, c.y, False).crop()
     else:
         # Both Inner
         min_x_oo = min(a.x     , b.x     )

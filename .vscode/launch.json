@@ -46,6 +46,7 @@
             "program": "vpod.py",
             "console": "integratedTerminal",
             "args": [
+                "-p",
                 "-g",
                 "BW",
                 "-u",

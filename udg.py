@@ -2,6 +2,7 @@
 
 from math import sqrt, sin, cos, pi
 from collections import deque
+from typing import ClassVar
 import networkx as nx
 import argparse
 import time
@@ -27,6 +28,7 @@ class Graph:
     of vertices or from a :class:`networkx.Graph` instance."""
     verbose: bool
     limit_points:bool = True
+    limit_negative_distances: bool = False
 
     unit: int
     n: int
@@ -39,6 +41,25 @@ class Graph:
     previous_area: list[list[DiscreteDisk]]
 
     iteretions: list[IterationInfo]
+
+    place_next_vertex_counter: ClassVar[int] = 0
+
+    check_distance = False
+    check_distance_iteration = 0
+    node_distances: list[int] = []
+    
+    @classmethod
+    def get_place_next_vertex_counter(cls) -> int:
+        return cls.place_next_vertex_counter
+
+    @classmethod
+    def increment_place_next_vertex_counter(cls) -> int:
+        cls.place_next_vertex_counter += 1
+        return cls.place_next_vertex_counter
+
+    @classmethod
+    def reset_place_next_vertex_counter(cls) -> None:
+        cls.place_next_vertex_counter = 0
 
     def __init__(self, n_or_g):
         if isinstance(n_or_g, int):
@@ -84,6 +105,8 @@ class Graph:
         # 5 -> 1/(2**(2**5)) = 1/4294967296
         # self.eps_min = 1e-12
         self.eps_min = 1
+
+        self.calculate_vertex_edge_distance()
 
     def add_edge(self, u: int, v: int):
         if v not in self.adj[u]:
@@ -132,14 +155,43 @@ class Graph:
         dx = self.coordinates[u].x - self.coordinates[v].x
         dy = self.coordinates[u].y - self.coordinates[v].y
         return dx * dx + dy * dy
-
+    
     def vertex_distance(self, u: int, v: int) -> float:
         """Return Euclidean distance between vertices ``u`` and ``v``."""
         return sqrt(self.vertex_distance_squared(u, v))
+    
+    def calculate_vertex_edge_distance(self):
+        """Calculate shortest path distances between all pairs of vertices."""
+        # Initialize with infinity for all pairs
+        INF = float('inf')
+        self.vertex_edge_distance = [[INF] * self.n for _ in range(self.n)]
+        
+        # Distance from vertex to itself is 0
+        for i in range(self.n):
+            self.vertex_edge_distance[i][i] = 0
 
-    def print_result(self, print_vertex: bool, print_edges: bool) -> None:
+        # Set direct edge distances to 1
+        for u in range(self.n):
+            for v in self.adj[u]:
+                self.vertex_edge_distance[u][v] = 1
+        
+        # Floyd-Warshall algorithm
+        for k in range(self.n):
+            for i in range(self.n):
+                for j in range(self.n):
+                    if (self.vertex_edge_distance[i][k] != INF and 
+                        self.vertex_edge_distance[k][j] != INF and
+                        self.vertex_edge_distance[i][k] + self.vertex_edge_distance[k][j] < self.vertex_edge_distance[i][j]):
+                        self.vertex_edge_distance[i][j] = self.vertex_edge_distance[i][k] + self.vertex_edge_distance[k][j]
+
+    def print_result(self, print_vertex: bool, print_edges: bool, print_work_summary: bool) -> None:
         time = self.stop_time - self.start_time
-        print(f"Time consumed: {time} s")
+        if (print_work_summary):
+            print(f"Time consumed: {time} s")
+            print(f"Total place_next_vertex calls: {Graph.get_place_next_vertex_counter()}")
+            print(f"Total operation_disk calls: {DiscreteDisk.get_operation_disk_counter()}")
+            print(f"Final unit: {self.unit}")
+
         if (print_vertex):
             for i in range(self.n):
                 print(f"  V ({i}): ({self.coordinates[i].x:7d}, {self.coordinates[i].y:7d})")
@@ -199,6 +251,52 @@ class Graph:
                     row += c
                 print(row)
         print()
+
+    def get_node_distances_info(self, header: bool = False):
+        maximum_vertex_edge_distance = self.get_maximum_vertex_edge_distance()
+        maximum_vertex_distance = maximum_vertex_edge_distance * self.unit + 1
+
+        if header:
+            row_header = '>'
+            for d in range(1, maximum_vertex_distance):
+                if d % self.unit == 0:
+                    c = '|'
+                elif d % 10 == 0:
+                    c = '*'
+                elif d % 5 == 0:
+                    c = '.'
+                else:
+                    c = ' '
+                row_header += c
+
+            row_header += '<'
+            return row_header
+
+        row = ""
+        for d in range(maximum_vertex_distance+1):
+            if d < len(self.node_distances):
+                if self.node_distances[d] == MODE_I:
+                    c = '█'
+                elif self.node_distances[d] == MODE_B:
+                    c = '▒'
+                elif self.node_distances[d] == MODE_O:
+                    c = ' '
+                else:
+                    c = '?'
+            else:
+                c = '-'
+            row += c
+
+        return row
+
+    def get_maximum_vertex_edge_distance(self):
+        max_distance = 0
+        for i in range(self.n):
+            for j in range(i + 1, self.n):
+                edge_distance = self.vertex_edge_distance[i][j]
+                if edge_distance != float('inf'):
+                    max_distance = max(max_distance, edge_distance)
+        return max_distance
 
     def draw(self, draw_disks: bool = False, ax=None):
         colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
@@ -316,7 +414,50 @@ class Graph:
         self.apply_order()
 
         self.place_next_vertex(0, True, False, 0, 0)
-    
+
+    def calculate_node_distances(self, nodes: tuple[int, int]):
+        u, v = nodes
+        if self.verbose:
+            print(f"Calculating node distances for: {u}, {v}")
+
+        maximum_vertex_edge_distance = self.get_maximum_vertex_edge_distance()
+
+        # +1 for 0 +1 for max
+        self.node_distances = [MODE_O] * (maximum_vertex_edge_distance * self.unit + 2)
+
+        self.apply_order(None, nodes)
+
+        for only_I in [True, False]:
+            self.check_distance = True
+            self.check_distance_iteration = 0
+            while self.check_distance:
+
+                # To keep correct order of point not check only_I
+                count_I: int = 0
+                count_B: int = 0
+                r_text = self.place_next_vertex(0, False, only_I, count_I, count_B)
+                r_mode = MODE_U
+                if r_text == YES:
+                    r_mode = MODE_I
+                elif r_text == NO:
+                    r_mode = MODE_O
+                elif r_text == TRIGRAPH:
+                    r_mode = MODE_B
+                else:
+                    r_mode = MODE_U
+
+                dx = self.coordinates[v].x
+
+                if dx >= len(self.node_distances):
+                    self.node_distances.extend([MODE_U] * (dx - len(self.node_distances) + 1))
+
+                if self.node_distances[dx] != MODE_I:
+                    self.node_distances[dx] = r_mode
+
+                self.check_distance_iteration += 1
+
+        return self.node_distances
+
     def store_vertex_distances(self, mode: np.uint8 = MODE_U):
         if self.verbose:
             msg = ""
@@ -352,6 +493,7 @@ class Graph:
             self.set_coordinate(v_index, p.x, p.y, p.mode)
             self.clear_previous_area(j)
 
+            Graph.increment_place_next_vertex_counter()
             if self.verbose:
                 point_iter += 1
                 self.set_iteration_index(v_index, point_iter)
@@ -409,27 +551,38 @@ class Graph:
             P.append(Coordinate(x = 0, y = 0, mode = MODE_I))
             return P
         if j == 1:
-            area = DiscreteDisk.disk(self.unit, 0, 0, connected = True)
+            """ Previous is 0, so coordinate is equal (0,0) """
+            area = self.create_area_for_next_vertex_join(0, 0, self.order[0], self.order[1], True)
             if self.limit_points:
                 P = [p for p in area.points_iter(types = ('I' if only_I else 'IB')) if p.y == 0 and p.x >= 0]
             else:
                 P = [p for p in area.points_iter(types = ('I' if only_I else 'IB')) if p.y >= 0 and p.x >= 0]
+
+            if self.check_distance:
+                if self.check_distance_iteration >= len(P) - 1:
+                    # This is the last index, handle accordingly
+                    p = P[-1]  # Get the last element
+                    self.check_distance = False  # Stop further iterations
+                else:
+                    p = P[self.check_distance_iteration]
+                P = []
+                P.append(p)
+            
             return P
 
         i = j - 2
         while i >= 0 and self.previous_area[j][i] is DISK_NONE:
             i -= 1
 
-        neighbors_v_order_j = self.neighbors(self.order[j])
-
         for k in range(i+1, j):
             coord_v_order_k = self.coordinates[self.order[k]]
-            area = DiscreteDisk.disk(self.unit, coord_v_order_k.x, coord_v_order_k.y, connected = self.order[k] in neighbors_v_order_j)
+            area = self.create_area_for_next_vertex_join(coord_v_order_k.x, coord_v_order_k.y, self.order[j], self.order[k])
             if k > 0:
                 prev_area = self.previous_area[j][k-1]
                 area = create_area_by_join(prev_area, area) 
             self.previous_area[j][k] = area
 
+        """For limit points return only positive y coordinates for second vertex"""
         if j == 2:
             if self.limit_points:
                 P = [p for p in area.points_iter(types = ('I' if only_I else 'IB')) if p.y >= 0]
@@ -439,17 +592,59 @@ class Graph:
         else: 
             return area.points_list(types = ('I' if only_I else 'IB'))
 
-    def apply_order(self):
-        """Choose and apply the appropriate ordering mode based on order_mode setting."""
-        if self.order_mode == 'P':
-            self.calculate_order_path()
-        elif self.order_mode == 'DA':
-            self.calculate_order_degree_level(desc = False)
-        elif self.order_mode == 'DD':
-            self.calculate_order_degree_level(desc = True)
+    def create_area_for_next_vertex_join(self, x:int, y:int, u: int, v: int, force_limit_negative_distance: bool = False) -> DiscreteDisk:
+        distance = self.vertex_edge_distance[u][v]
+        if distance == 1:
+            area = DiscreteDisk.disk(self.unit, x, y, connected = True)          
         else:
-            self.calculate_order_same()
+            area = DiscreteDisk.disk(self.unit, x, y, connected = False)
+            if force_limit_negative_distance or self.limit_negative_distances:
+                area = create_area_by_join(area, DiscreteDisk.disk(self.unit * distance, x, y, connected = True))
+        return area
 
+    def apply_order(self, order_mode: str = None, force_nodes: list[int] = None):
+        """Choose and apply the appropriate ordering mode based on order_mode setting."""
+        if order_mode is not None:
+            self.order_mode = order_mode
+
+        if force_nodes is not None:
+            self.calculate_order_by_forced_nodes(force_nodes)
+        else:
+            if self.order_mode == 'P':
+                self.calculate_order_path()
+            elif self.order_mode == 'DA':
+                self.calculate_order_degree_level(desc = False)
+            elif self.order_mode == 'DD':
+                self.calculate_order_degree_level(desc = True)
+            else:
+                self.calculate_order_same()
+    
+    def calculate_order_by_forced_nodes(self, force_nodes: list[int]):
+        """Calculate a work order of the graph starting from the given forced nodes."""
+        visited = [False] * self.n
+        self.order = []
+        q = deque()
+
+        for v in force_nodes:
+            if not visited[v]:
+                visited[v] = True
+                self.order.append(v)
+                q.append(v)
+
+        while q:
+            v = q.popleft()
+            for w in self.neighbors(v):
+                if not visited[w]:
+                    visited[w] = True
+                    self.order.append(w)
+                    q.append(w)
+
+        # Add any remaining unvisited nodes
+        for v in range(self.n):
+            if not visited[v]:
+                visited[v] = True
+                self.order.append(v)
+                
     def calculate_order_same(self):
         self.order = range(self.n)
 
@@ -655,6 +850,8 @@ def test_coordinates_g5a(verbose=False):
     return g
 
 def main() -> None:
+    # abcdefghijklmnopqrstuvwxyz
+    # -b---f-hijkl----q-----wxyz
     parser = argparse.ArgumentParser(
         description="Check if a graph is a Unit Disk Graph (UDG).")
     group = parser.add_mutually_exclusive_group(required=True)
@@ -677,6 +874,9 @@ def main() -> None:
         "-r", "--print_edges", action="store_true",
         help="Print distances for each edge")
     parser.add_argument(
+        "-s", "--print_work_summary", action="store_true",
+        help="Print a summary of work done")
+    parser.add_argument(
         "-d", "--draw", action="store_true",
         help="Draw the graph using stored coordinates")
     parser.add_argument(
@@ -694,6 +894,9 @@ def main() -> None:
     parser.add_argument(
         "-n", "--not_limit_points", action="store_true",
         help="Turn off limiting points")
+    parser.add_argument(
+        "-m", "--limit_negative_distances", action="store_true",
+        help="Turn on limiting negative distances")
     parser.add_argument(
         "graph", metavar="GRAPH", nargs="?", default="",
         help="Input graph description")
@@ -731,12 +934,15 @@ def main() -> None:
     if args.not_limit_points:
         g.limit_points = False
 
+    if args.limit_negative_distances:
+        g.limit_negative_distances = True
+
     if check:
         output = g.udg_recognition()
         print("Graph is " + ("" if output else "NOT ") + "a Unit Disk Graph (UDG).")
     
-    if args.print_vertex or args.print_edges:
-        g.print_result(args.print_vertex, args.print_edges)
+    if args.print_vertex or args.print_edges or args.print_work_summary:
+        g.print_result(args.print_vertex, args.print_edges, args.print_work_summary)
 
     if args.draw:
         g.draw(args.circle)

@@ -1,7 +1,7 @@
 import sys, os; sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 import unittest
 import networkx as nx
-from vpod import vertex_pair_orbits, print_vertex_pair_orbits
+from vpod import vertex_pair_orbits, process_graph
 
 class TestVertexPairOrbits(unittest.TestCase):
     
@@ -87,7 +87,30 @@ class TestVertexPairOrbits(unittest.TestCase):
         self.assertEqual(orbit_type, "n")
         self.assertIsNone(distance)  # Infinite distance
         self.assertEqual(pairs, [(0, 1)])
-    
+
+    def test_process_graph_p4_u4(self):
+        orbits = process_graph("4: 0,1 1,2 2,3", g6=False, unit=4, print_result=False, verbose=False)
+
+        # Check the number of orbits
+        self.assertEqual(len(orbits), 4)
+
+        # Check the content of each orbit
+        self.assertEqual(orbits[0], ('E', 1, [(0, 1), (2, 3)], None, (0,  5)))
+        self.assertEqual(orbits[1], ('n', 2, [(0, 2), (1, 3)], None, (3,  9)))
+        self.assertEqual(orbits[2], ('n', 3, [(0, 3)        ], None, (3, 13)))
+        self.assertEqual(orbits[3], ('E', 1, [(1, 2)        ], None, (0,  5)))
+
+    def test_process_graph_p4_u8(self):
+        orbits = process_graph("4: 0,1 1,2 2,3", g6=False, unit=8, print_result=False, verbose=False)
+
+        # Check the number of orbits
+        self.assertEqual(len(orbits), 4)
+
+        # Check the content of each orbit
+        self.assertEqual(orbits[0], ('E', 1, [(0, 1), (2, 3)], ( 4,  6), (0,  9)))
+        self.assertEqual(orbits[1], ('n', 2, [(0, 2), (1, 3)], (10, 12), (7, 17)))
+        self.assertEqual(orbits[2], ('n', 3, [(0, 3)        ], (10, 18), (7, 25)))
+        self.assertEqual(orbits[3], ('E', 1, [(1, 2)        ], ( 4,  6), (0,  9)))
 
 if __name__ == "__main__":
     unittest.main()
