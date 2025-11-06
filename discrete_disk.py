@@ -24,7 +24,7 @@ TBL_DIFF = np.array([[MODE_O,MODE_O,MODE_O],   # a = O    a \ b
                      [MODE_I,MODE_B,MODE_O]],  # a = I
                     dtype=np.uint8)
 
-N=2**8
+N=2**10
 
 DSQRT2 = 2*np.sqrt(2)
 

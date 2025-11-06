@@ -50,7 +50,7 @@ def vertex_pair_orbits(G):
         seen.update(orb)
     return orbits
 
-def print_vertex_pair_orbit(orbit, i=None):
+def print_vertex_pair_orbit(print_result:bool, output_file:str, orbit, i=None):
     """
     Prints a single vertex pair orbit for a given graph in a formatted way.
     Each orbit is expected to be a tuple (orbit_type, distance, orbit_pairs).
@@ -58,14 +58,14 @@ def print_vertex_pair_orbit(orbit, i=None):
     orbit_type, distance, orbit_pairs = orbit
     orbit_letter = (' ' + chr(ord('a') + i)) if i is not None else ''
     distance_str = str(distance) if distance is not None else "∞"
-    print(f"  Orbit{orbit_letter} ({orbit_type}, d={distance_str}): {orbit_pairs}")
+    out(print_result, output_file, f"  Orbit{orbit_letter} ({orbit_type}, d={distance_str}): {orbit_pairs}")
 
-def print_vertex_pair_orbits(orbits):
+def print_vertex_pair_orbits(print_result:bool, output_file:str, orbits):
     """
     Prints all vertex pair orbits for a given graph in a formatted way.
     """
     for i, orbit in enumerate(orbits):
-        print_vertex_pair_orbit(orbit, i)
+        print_vertex_pair_orbit(print_result, output_file, orbit, i)
 
 def get_ranges(values:list[int], border:bool, ignore_range_check:bool=False) -> tuple[int,int,bool]|None:
     """Get min and max indexes of a specific value in a list, ensuring all intermediate values are the same."""
@@ -92,7 +92,7 @@ def get_ranges(values:list[int], border:bool, ignore_range_check:bool=False) -> 
     
     return (min_index, max_index, continous)
 
-def process_graph(graph_input:str, g6:bool=True, unit:int=4, ignore_range_check:bool=False, print_result:bool=False, chars:str="█▒ ", verbose:bool=False):
+def process_graph(graph_input:str, g6:bool=True, unit:int=4, ignore_range_check:bool=False, print_result:bool=False, output_file:str="", chars:str="█▒ ", verbose:bool=False):
     start_time = time.time()
     
     if g6:
@@ -109,12 +109,10 @@ def process_graph(graph_input:str, g6:bool=True, unit:int=4, ignore_range_check:
 
     orbits = vertex_pair_orbits(g)
 
-    if print_result:
-        print_vertex_pair_orbits(orbits)
+    print_vertex_pair_orbits(print_result, output_file, orbits)
 
-    if print_result:
-        header = udg.get_node_distances_info(True)
-        print(f"\n     :       : {header}       Time")
+    header = udg.get_node_distances_info(True)
+    out(print_result, output_file, f"\n     :       : {header}       Time")
     
     result = []
     for i, orbit in enumerate(orbits):
@@ -128,7 +126,7 @@ def process_graph(graph_input:str, g6:bool=True, unit:int=4, ignore_range_check:
         range_b = get_ranges(node_distances, True , ignore_range_check)
         result.append((orbit_type, distance, orbit_pairs, range_i, range_b))
         iteration_time = time.time() - iteration_start_time
-        if print_result:
+        if print_result or output_file:
             msg = udg.get_node_distances_info(False, chars)
             u, v = nodes
             edge_indicator = '-' if orbit_type == 'E' else ' '
@@ -141,13 +139,19 @@ def process_graph(graph_input:str, g6:bool=True, unit:int=4, ignore_range_check:
             range_mark = (' ' + ('R' if distance == 1 else 'r')) if not_default_range_b else ''
             continueous_i_mark = ' I' if not_continueous_range_i else ''
             continueous_b_mark = ' B' if not_continueous_range_b else ''
-            print(f"{orbit_letter} [{distance}]: {u} {edge_indicator} {v} : {msg}    {iteration_time:7.2f} s{attention_mark}{range_mark}{continueous_i_mark}{continueous_b_mark}")
+            out(print_result, output_file, f"{orbit_letter} [{distance}]: {u} {edge_indicator} {v} : {msg}    {iteration_time:7.2f} s{attention_mark}{range_mark}{continueous_i_mark}{continueous_b_mark}")
 
     stop_time = time.time()
-    if print_result:
-        print(f"\nTime taken: {stop_time - start_time:.4f} s")
+    out(print_result, output_file, f"\nTime taken: {stop_time - start_time:.4f} s")
 
     return result
+
+def out(print_to_console:bool, output_file: str, msg: str) -> None:
+    if print_to_console:
+        print(msg)
+    if output_file:
+        with open(output_file, 'a') as f:
+            f.write(msg + '\n')
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -162,6 +166,9 @@ def main() -> None:
     parser.add_argument(
         "-f", "--file", action="store_true",
         help="Read graphs from file (one graph6 per line)")
+    parser.add_argument(
+        "-o", "--output", type=str,
+        help="Write output to file")
     parser.add_argument(
         "-v", "--verbose", action="store_true",
         help="Enable verbose output for debugging")
@@ -198,10 +205,9 @@ def main() -> None:
         return
 
     for i, graph_input in enumerate(graphs_input):
-        if print:
-            print(f"\n=== Processing Graph {i+1}/{len(graphs_input)} ===")
-            print(f"Input: {graph_input}")
-        process_graph(graph_input, args.graph6, args.unit, args.ignore, args.print, args.chars,args.verbose)
+        out(args.print, args.output, f"\n=== Processing Graph {i+1}/{len(graphs_input)} ===")
+        out(args.print, args.output, f"Input: {graph_input}")
+        process_graph(graph_input, args.graph6, args.unit, args.ignore, args.print, args.output, args.chars, args.verbose)
 
 if __name__ == "__main__":
     main()
