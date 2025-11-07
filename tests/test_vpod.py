@@ -95,10 +95,10 @@ class TestVertexPairOrbits(unittest.TestCase):
         self.assertEqual(len(orbits), 4)
 
         # Check the content of each orbit
-        self.assertEqual(orbits[0], ('E', 1, [(0, 1), (2, 3)], None, (0,  5)))
-        self.assertEqual(orbits[1], ('n', 2, [(0, 2), (1, 3)], None, (3,  9)))
-        self.assertEqual(orbits[2], ('n', 3, [(0, 3)        ], None, (3, 13)))
-        self.assertEqual(orbits[3], ('E', 1, [(1, 2)        ], None, (0,  5)))
+        self.assertEqual(orbits[0], ('E', 1, [(0, 1), (2, 3)], None, (0,  5, True)))
+        self.assertEqual(orbits[1], ('n', 2, [(0, 2), (1, 3)], None, (3,  9, True)))
+        self.assertEqual(orbits[2], ('n', 3, [(0, 3)        ], None, (3, 13, True)))
+        self.assertEqual(orbits[3], ('E', 1, [(1, 2)        ], None, (0,  5, True)))
 
     def test_process_graph_p4_u8(self):
         orbits = process_graph("4: 0,1 1,2 2,3", g6=False, unit=8, print_result=False, verbose=False)
@@ -107,10 +107,10 @@ class TestVertexPairOrbits(unittest.TestCase):
         self.assertEqual(len(orbits), 4)
 
         # Check the content of each orbit
-        self.assertEqual(orbits[0], ('E', 1, [(0, 1), (2, 3)], ( 4,  6), (0,  9)))
-        self.assertEqual(orbits[1], ('n', 2, [(0, 2), (1, 3)], (10, 12), (7, 17)))
-        self.assertEqual(orbits[2], ('n', 3, [(0, 3)        ], (10, 18), (7, 25)))
-        self.assertEqual(orbits[3], ('E', 1, [(1, 2)        ], ( 4,  6), (0,  9)))
+        self.assertEqual(orbits[0], ('E', 1, [(0, 1), (2, 3)], ( 4,  6, True), (0,  9, True)))
+        self.assertEqual(orbits[1], ('n', 2, [(0, 2), (1, 3)], (10, 12, True), (7, 17, True)))
+        self.assertEqual(orbits[2], ('n', 3, [(0, 3)        ], (10, 18, True), (7, 25, True)))
+        self.assertEqual(orbits[3], ('E', 1, [(1, 2)        ], ( 4,  6, True), (0,  9, True)))
 
 if __name__ == "__main__":
     unittest.main()

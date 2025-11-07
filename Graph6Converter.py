@@ -65,12 +65,18 @@ def graph_to_edge_list(G: nx.Graph) -> str:
     edges_str = " ".join(f"{u},{v}" for u, v in edges)
     return f"{n}: {edges_str}" if edges_str else f"{n}:"
 
-def graph_to_g6(G: nx.Graph) -> str:
-    g6 = to_graph6_bytes(G).decode().strip()
+def graph_to_g6(G: nx.Graph, canonical: bool = False) -> str:
+    if canonical:
+        G = canonize_graph(G)
+    g6 = to_graph6_bytes(G, header=False).decode().strip()
     return g6
 
 def canonize_graph(G: nx.Graph) -> nx.Graph:
     """Return a canonical form of the graph using a sorted adjacency labeling."""
+    # reload graph
+    g6 = graph_to_g6(G)
+    G = g6_to_graph(g6)
+    # use igraph to get canonical labeling
     g_ig = ig.Graph.from_networkx(G)
     # zwraca permutację: indeks -> nowa_etykieta
     perm = g_ig.canonical_permutation(color=None)   # uwzględnisz 'color', jeżeli masz typy węzłów
@@ -83,10 +89,8 @@ def canonize_graph(G: nx.Graph) -> nx.Graph:
 
 def edge_list_to_graph6(edge_list: str, canonical: bool = False) -> str:
     """Convert edge-list to graph6."""
-    G = edge_list_to_graph(edge_list)
-    if canonical:
-        G = canonize_graph(G)
-    return graph_to_g6(G)
+    G:nx.Graph = edge_list_to_graph(edge_list)
+    return graph_to_g6(G, canonical=canonical)
 
 def graph6_to_edge_list(g6: str, canonical: bool = False) -> str:
     """Convert graph6 to edge-list."""

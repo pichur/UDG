@@ -69,7 +69,77 @@ class GraphUtil:
             'clustering': nx.average_clustering(graph),
             'degree_sequence': sorted([d for n, d in graph.degree()], reverse=True)
         }
+    
+    class ReduceInfo:
+        def __init__(self, input_g6:str, input_canonical_g6:str, reduced_nodes:int, output_canonical:nx.Graph, output_canonical_g6:str, vertex_mapping:dict):
+            self.input_g6 = input_g6
+            self.input_canonical_g6 = input_canonical_g6
+            self.reduced_nodes = reduced_nodes
+            self.output_canonical = output_canonical
+            self.output_canonical_g6 = output_canonical_g6
+            self.vertex_mapping = vertex_mapping
 
+    @classmethod
+    def reduce(cls, graph: nx.Graph) -> ReduceInfo:
+        """
+        Reduce graph by merging nodes with identical neighborhoods.
+        Keeps the node with smaller index and returns canonical form.
+
+        Args:
+            graph (nx.Graph): The input graph to reduce.
+
+        Returns:
+            dict|None: A dictionary with 'canonical_g6' and 'vertex_mapping' or None if reduction fails.
+        """
+        # Create a copy to avoid modifying original
+        reduced_graph = graph.copy()
+        vertex_mapping = {}  # Maps remaining vertices to lists of merged vertices
+
+        changed = True
+        while changed:
+            changed = False
+            nodes = list(reduced_graph.nodes())
+            
+            for i in range(len(nodes)):
+                for j in range(i + 1, len(nodes)):
+                    node1, node2 = nodes[i], nodes[j]
+                    
+                    # Skip if either node was already removed
+                    if node1 not in reduced_graph or node2 not in reduced_graph:
+                        continue
+                        
+                    # Check if nodes are connected and have identical neighborhoods
+                    if reduced_graph.has_edge(node1, node2):
+                        neighbors1 = set(reduced_graph.neighbors(node1)) - {node2}
+                        neighbors2 = set(reduced_graph.neighbors(node2)) - {node1}
+                        
+                        if neighbors1 == neighbors2:
+                            # Keep node with smaller index, remove the other
+                            keep_node = min(node1, node2)
+                            remove_node = max(node1, node2)
+                            
+                            # Update vertex mapping - create entries only when reduction happens
+                            if keep_node not in vertex_mapping:
+                                vertex_mapping[keep_node] = []
+                            vertex_mapping[keep_node].append(remove_node)
+                            
+                            # Remove the node with larger index
+                            reduced_graph.remove_node(remove_node)
+                            changed = True
+                            break
+                if changed:
+                    break
+
+        output_canonical_g6 = Graph6Converter.graph_to_g6(reduced_graph, canonical=True)
+
+        return GraphUtil.ReduceInfo(
+            input_g6=Graph6Converter.graph_to_g6(graph),
+            input_canonical_g6=Graph6Converter.graph_to_g6(graph, canonical=True),
+            reduced_nodes=graph.number_of_nodes() - reduced_graph.number_of_nodes(),
+            output_canonical=Graph6Converter.g6_to_graph(output_canonical_g6),
+            output_canonical_g6=output_canonical_g6,
+            vertex_mapping=vertex_mapping
+        )
 
 def main():
     """Main function for command line interface."""

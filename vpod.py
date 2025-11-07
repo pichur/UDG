@@ -1,6 +1,7 @@
 import argparse
 import time
 import Graph6Converter
+from ug import GraphUtil
 from discrete_disk import MODE_O, MODE_B, MODE_I
 from udg import Graph
 
@@ -101,6 +102,12 @@ def process_graph(graph_input:str, g6:bool=True, unit:int=4, ignore_range_check:
         g:nx.Graph = Graph6Converter.edge_list_to_graph(graph_input)
 
     udg = Graph(g)
+
+    reduction_info = GraphUtil.reduce(g)
+    if reduction_info.reduced_nodes > 0:
+        out(print_result, output_file, f"Graph reduced to : {reduction_info.output_canonical_g6}")
+        return 
+
     udg.last_verbose_time = time.time()
     udg.set_verbose(verbose)
 
