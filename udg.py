@@ -415,7 +415,7 @@ class Graph:
 
         self.place_next_vertex(0, True, False, 0, 0)
 
-    def calculate_node_distances(self, nodes: tuple[int, int]):
+    def calculate_node_distances(self, nodes: tuple[int, int], order: str = "DD") -> list[int]:
         u, v = nodes
         if self.verbose:
             print(f"Calculating node distances for: {u}, {v}")
@@ -425,7 +425,7 @@ class Graph:
         # +1 for 0 +1 for max
         self.node_distances = [MODE_O] * (maximum_vertex_edge_distance * self.unit + 2)
 
-        self.apply_order(None, nodes)
+        self.apply_order(order, nodes)
 
         for only_I in [True, False]:
             self.check_distance = True
@@ -478,25 +478,59 @@ class Graph:
                     self.vertex_distances[i][j][distanceC] = mode
     
     def place_next_vertex(self, j: int, calc_D: bool, only_I: bool, count_I: int, count_B: int):
-        v_index = self.order[j]
+        if self.order[j] == -1:
+            # Find the unplaced vertex with the smallest number of candidate points
+            min_candidates = float('inf')
+            best_vertex = None
+            best_P = None
 
-        P = self.candidate_points(j, only_I, count_I, count_B)
+            for v in range(self.n):
+                # Skip vertices that are already placed in order
+                if v in self.order[:j]:
+                    continue
+                
+                # Temporarily set this vertex as the next one to get candidate points
+                self.order[j] = v
+                
+                # Get candidate points for this vertex
+                P = self.candidate_points(j, only_I, count_I, count_B)
+                num_candidates = len(P)
+                
+                if self.verbose:
+                    print(f"  check order {j}={v} : {num_candidates}")
+
+                # Check if this is the best option so far
+                if num_candidates < min_candidates:
+                    min_candidates = num_candidates
+                    best_vertex = v
+                    best_P = P
+
+            # Set the best vertex at position j and use its candidate points
+            self.order[j] = best_vertex
+            P = best_P
+        else:
+            P = self.candidate_points(j, only_I, count_I, count_B)
+
+        vertex = self.order[j]
+
+        if self.verbose:
+            print(f"order[{j}]={vertex} : {len(P)} points")
 
         found_trigraph = False
         if self.verbose:
-            self.set_iteration_len(v_index, len(P))
+            self.set_iteration_len(vertex, len(P))
         point_iter = -1
         for p in P:
             incr_I = 1 if p.mode == MODE_I else 0
             incr_B = 1 if p.mode == MODE_B else 0
 
-            self.set_coordinate(v_index, p.x, p.y, p.mode)
+            self.set_coordinate(vertex, p.x, p.y, p.mode)
             self.clear_previous_area(j)
 
             Graph.increment_place_next_vertex_counter()
             if self.verbose:
                 point_iter += 1
-                self.set_iteration_index(v_index, point_iter)
+                self.set_iteration_index(vertex, point_iter)
                 if time.time() - self.last_verbose_time > 10:
                     self.last_verbose_time = time.time()
                     print("  placing " + self.state_info(only_I, j))
@@ -610,14 +644,19 @@ class Graph:
         if force_nodes is not None:
             self.calculate_order_by_forced_nodes(force_nodes)
         else:
-            if self.order_mode == 'P':
+            if self.order_mode.startswith('P'):
                 self.calculate_order_path()
-            elif self.order_mode == 'DA':
+            elif self.order_mode.startswith('DA'):
                 self.calculate_order_degree_level(desc = False)
-            elif self.order_mode == 'DD':
+            elif self.order_mode.startswith('DD'):
                 self.calculate_order_degree_level(desc = True)
             else:
                 self.calculate_order_same()
+        
+        if self.order_mode.__contains__('auto'):
+            # Keep first two nodes and set rest to -1
+            if len(self.order) >= 2:
+                self.order = list(self.order[:2]) + [-1] * (len(self.order) - 2)
     
     def calculate_order_by_forced_nodes(self, force_nodes: list[int]):
         """Calculate a work order of the graph starting from the given forced nodes."""

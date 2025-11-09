@@ -47,10 +47,14 @@
             "console": "integratedTerminal",
             "args": [
                 "-p",
+                "-c",
+                "=~",
                 "-g",
-                "BW",
+                "DEw",
                 "-u",
-                "4"
+                "16",
+                "-a",
+                "auto",
             ]
         },
         {

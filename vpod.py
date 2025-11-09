@@ -93,7 +93,7 @@ def get_ranges(values:list[int], border:bool, ignore_range_check:bool=False) -> 
     
     return (min_index, max_index, continous)
 
-def process_graph(graph_input:str, g6:bool=True, unit:int=4, ignore_range_check:bool=False, print_result:bool=False, output_file:str="", chars:str="█▒ ", verbose:bool=False):
+def process_graph(graph_input:str, g6:bool=True, unit:int=4, order:str="DD", ignore_range_check:bool=False, print_result:bool=False, output_file:str="", chars:str="█▒ ", verbose:bool=False, limit_negative_distances:bool=False):
     start_time = time.time()
     
     if g6:
@@ -111,6 +111,8 @@ def process_graph(graph_input:str, g6:bool=True, unit:int=4, ignore_range_check:
     udg.last_verbose_time = time.time()
     udg.set_verbose(verbose)
 
+    udg.limit_negative_distances = limit_negative_distances
+
     if unit:
         udg.set_unit(unit)
 
@@ -127,7 +129,7 @@ def process_graph(graph_input:str, g6:bool=True, unit:int=4, ignore_range_check:
         orbit_letter = chr(ord('a') + i)
         orbit_type, distance, orbit_pairs = orbit
         nodes = orbit_pairs[0]
-        node_distances = udg.calculate_node_distances(nodes)
+        node_distances = udg.calculate_node_distances(nodes, order)
 
         range_i = get_ranges(node_distances, False, ignore_range_check)
         range_b = get_ranges(node_distances, True , ignore_range_check)
@@ -161,6 +163,8 @@ def out(print_to_console:bool, output_file: str, msg: str) -> None:
             f.write(msg + '\n')
 
 def main() -> None:
+    # abcdefghijklmnopqrstuvwxyz
+    # -b-d---h-jkl-n--qrst--wxyz
     parser = argparse.ArgumentParser(
         description="Calculate distances of vertex pair orbits in udg graph.")
     group = parser.add_mutually_exclusive_group(required=True)
@@ -192,6 +196,12 @@ def main() -> None:
         "-u", "--unit", type=int,
         help="Start unit")
     parser.add_argument(
+        "-a", "--order", type=str, default="DD",
+        help="Order mode")
+    parser.add_argument(
+        "-m", "--limit_negative_distances", action="store_true",
+        help="Turn on limiting negative distances")
+    parser.add_argument(
         "graph", metavar="GRAPH", nargs="?", default="",
         help="Input graph description (multiple graphs can be separated by ;) or file if -f is used)")
 
@@ -214,7 +224,7 @@ def main() -> None:
     for i, graph_input in enumerate(graphs_input):
         out(args.print, args.output, f"\n=== Processing Graph {i+1}/{len(graphs_input)} ===")
         out(args.print, args.output, f"Input: {graph_input}")
-        process_graph(graph_input, args.graph6, args.unit, args.ignore, args.print, args.output, args.chars, args.verbose)
+        process_graph(graph_input, args.graph6, args.unit, args.order, args.ignore, args.print, args.output, args.chars, args.verbose, args.limit_negative_distances)
 
 if __name__ == "__main__":
     main()
