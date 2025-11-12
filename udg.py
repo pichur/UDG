@@ -636,23 +636,38 @@ class Graph:
                 area = create_area_by_join(area, DiscreteDisk.disk(self.unit * distance, x, y, connected = True))
         return area
 
+
     def apply_order(self, order_mode: str = None, force_nodes: list[int] = None):
         """Choose and apply the appropriate ordering mode based on order_mode setting."""
         if order_mode is not None:
             self.order_mode = order_mode
 
-        if force_nodes is not None:
+        if self.order_mode.startswith('F'):
             self.calculate_order_by_forced_nodes(force_nodes)
+        elif self.order_mode.startswith('P'):
+            self.calculate_order_path()
+        elif self.order_mode.startswith('DA'):
+            self.calculate_order_degree_level(desc = False)
+        elif self.order_mode.startswith('DD'):
+            self.calculate_order_degree_level(desc = True)
+        elif self.order_mode.startswith('O_'):
+            self.order = [-1] * self.n
+            # Custom order provided as a suffix
+            order_str = self.order_mode[2:]
+            order_str_list = order_str.split(',')
+            for i in range(min(self.n, len(order_str_list))):
+                x = order_str_list[i]
+                if x.isdigit() and int(x) < self.n:
+                    self.order[i] = int(x)
         else:
-            if self.order_mode.startswith('P'):
-                self.calculate_order_path()
-            elif self.order_mode.startswith('DA'):
-                self.calculate_order_degree_level(desc = False)
-            elif self.order_mode.startswith('DD'):
-                self.calculate_order_degree_level(desc = True)
-            else:
-                self.calculate_order_same()
+            self.calculate_order_same()
         
+        if force_nodes is not None:
+            # Ensure forced nodes are at the start of the order
+            forced_set = set(force_nodes)
+            remaining_nodes = [v for v in self.order if v not in forced_set]
+            self.order = list(force_nodes) + remaining_nodes
+
         if self.order_mode.__contains__('auto'):
             # Keep first two nodes and set rest to -1
             if len(self.order) >= 2:
@@ -685,8 +700,10 @@ class Graph:
                 self.order.append(v)
                 
     def calculate_order_same(self):
-        self.order = range(self.n)
-
+        self.order = []
+        for v in range(self.n):
+            self.order.append(v)
+            
     def calculate_order_path(self):
         """Calculate a work order of the graph starting from any p3 inducted subgraph."""
         # Find a P3 (path of length 2) induced subgraph: vertices 0-1-2 such that

@@ -101,11 +101,11 @@ class TestUDG(unittest.TestCase):
         """DV{"""
         self._check_udg(['5: 1,3 1,4 1,5 2,4 2,5 3,4 3,5 4,5'], True)
     
-    def test_udg_5_W_4(self):
+    def test_udg_5_gn(self):
         """D]w"""
         self._check_udg(['5: 1,3 1,4 1,5 2,3 2,4 2,5 3,5'], True)
     
-    def test_udg_5_gn(self):
+    def test_udg_5_W_4(self):
         """D]{"""
         self._check_udg(['5: 1,3 1,4 1,5 2,3 2,4 2,5 3,5 4,5'], True)
     
