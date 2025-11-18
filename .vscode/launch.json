@@ -27,6 +27,20 @@
             ]
         },
         {
+            "name": "udg-g5",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "udg.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-s",
+                "-e", 
+                "7: 1,2 1,3 1,4 2,5 3,5 2,6 4,6 3,7 4,7",
+                "-a",
+                "O:5,2,3,1,6,7,4"
+            ]
+        },
+        {
             "name": "cvd",
             "type": "debugpy",
             "request": "launch",
@@ -78,6 +92,18 @@
                 "-c",
                 "-p",
                 "Cq"
+            ]
+        },
+        {
+            "name": "udg_mg",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "udg_mg.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-s",
+                "-e",
+                "7: 1,2 1,3 1,4 2,5 3,5 2,6 4,6 3,7 4,7"
             ]
         },
     ]

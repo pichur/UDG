@@ -112,20 +112,15 @@ class TestUDG(unittest.TestCase):
 
     def test_apply_order_custom_o(self):
         g = self._udg_graph('5: 1,2 1,3 1,4 1,5 2,3')
-        g.apply_order('O_4,3,2,1,0')
-        self.assertEqual('O_4,3,2,1,0', g.order_mode)
+        g.apply_order('O:4,3,2,1,0')
+        self.assertEqual('O:4,3,2,1,0', g.order_mode)
         self.assertEqual([4,3,2,1,0], g.order)
 
     def test_apply_order_custom_o_partial(self):
         g = self._udg_graph('5: 1,2 1,3 1,4 1,5 2,3')
-        g.apply_order('O_2,4')
-        self.assertEqual('O_2,4', g.order_mode)
+        g.apply_order('O:2,4')
+        self.assertEqual('O:2,4', g.order_mode)
         self.assertEqual([2,4,-1,-1,-1], g.order)
-
-    def test_apply_order_custom_o_invalid_nodes(self):
-        g = self._udg_graph('3: 1,2 2,3')
-        g.apply_order('O_0,5,1')  # node 5 doesn't exist
-        self.assertEqual([0,-1,1], g.order)
 
     def test_apply_order_force_nodes_a(self):
         g = self._udg_graph('5: 1,2 1,3 1,4 1,5 2,3')

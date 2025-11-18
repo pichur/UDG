@@ -30,6 +30,7 @@ class Graph:
     limit_points:bool = True
     limit_negative_distances: bool = False
 
+    level: int = 0
     unit: int
     n: int
     adj: list[list[int]]
@@ -42,11 +43,13 @@ class Graph:
 
     iteretions: list[IterationInfo]
 
-    place_next_vertex_counter: ClassVar[int] = 0
-
     check_distance = False
     check_distance_iteration = 0
     node_distances: list[int] = []
+
+    collect_work_summary: bool = False
+    place_next_vertex_counter: ClassVar[int] = 0
+    place_next_vertex_by_level_and_order_counter: list[list[int]] = []
     
     @classmethod
     def get_place_next_vertex_counter(cls) -> int:
@@ -125,6 +128,11 @@ class Graph:
         self.verbose = verbose
         return self
     
+    def set_collect_work_summary(self, collect_work_summary: bool):
+        """Set whether to collect work summary statistics."""
+        self.collect_work_summary = collect_work_summary
+        return self
+
     def set_coordinate(self, v: int, x: int, y: int, mode: np.uint8 = MODE_U):
         """Set coordinates for vertex ``v``."""
         v = self.coordinates[v]
@@ -188,7 +196,12 @@ class Graph:
         time = self.stop_time - self.start_time
         if (print_work_summary):
             print(f"Time consumed: {time} s")
+            print(f"Order: {self.order}")
             print(f"Total place_next_vertex calls: {Graph.get_place_next_vertex_counter()}")
+            print(f"  lvl:ord  calls")
+            for level, counters in enumerate(self.place_next_vertex_by_level_and_order_counter):
+                for order, count in enumerate(counters):
+                    print(f"  {level:3d}:{order:3d}  {count:9,d}".replace(',', ' '))
             print(f"Total operation_disk calls: {DiscreteDisk.get_operation_disk_counter()}")
             print(f"Final unit: {self.unit}")
 
@@ -349,6 +362,7 @@ class Graph:
         
         self.apply_order()
 
+        self.level = 0
         while True:
             if self.verbose:
                 print(f"Checking unit: {self.unit}")
@@ -366,6 +380,7 @@ class Graph:
                 return False
 
             self.refine_granularity()
+            self.level += 1
     
     def refine_granularity(self):
         self.set_unit(max(self.unit + 1, int(np.ceil(self.unit * 1.4))))
@@ -477,6 +492,15 @@ class Graph:
                 if self.vertex_distances[i][j][distanceC] != MODE_I:
                     self.vertex_distances[i][j][distanceC] = mode
     
+    def mark_place_next_vertex_process(self, order_index: int):
+        Graph.increment_place_next_vertex_counter()
+        while len(self.place_next_vertex_by_level_and_order_counter) <= self.level:
+            self.place_next_vertex_by_level_and_order_counter.append([])
+        while len(self.place_next_vertex_by_level_and_order_counter[self.level]) <= order_index:
+            self.place_next_vertex_by_level_and_order_counter[self.level].append(0)
+        self.place_next_vertex_by_level_and_order_counter[self.level][order_index] += 1
+
+
     def place_next_vertex(self, j: int, calc_D: bool, only_I: bool, count_I: int, count_B: int):
         if self.order[j] == -1:
             # Find the unplaced vertex with the smallest number of candidate points
@@ -527,7 +551,9 @@ class Graph:
             self.set_coordinate(vertex, p.x, p.y, p.mode)
             self.clear_previous_area(j)
 
-            Graph.increment_place_next_vertex_counter()
+            if self.collect_work_summary:
+                self.mark_place_next_vertex_process(j)
+            
             if self.verbose:
                 point_iter += 1
                 self.set_iteration_index(vertex, point_iter)
@@ -650,15 +676,30 @@ class Graph:
             self.calculate_order_degree_level(desc = False)
         elif self.order_mode.startswith('DD'):
             self.calculate_order_degree_level(desc = True)
-        elif self.order_mode.startswith('O_'):
+        elif self.order_mode.startswith('O:'):
             self.order = [-1] * self.n
             # Custom order provided as a suffix
             order_str = self.order_mode[2:]
             order_str_list = order_str.split(',')
-            for i in range(min(self.n, len(order_str_list))):
-                x = order_str_list[i]
-                if x.isdigit() and int(x) < self.n:
-                    self.order[i] = int(x)
+            order_int_list = []
+            for x in order_str_list:
+                x = x.strip()
+                if x.isdigit():
+                    order_int_list.append(int(x))
+            # Find the maximum vertex value to determine if indexed from 0 or 1
+            max_vertex = -1
+            for i in range(min(self.n, len(order_int_list))):
+                max_vertex = max(max_vertex, order_int_list[i])
+            
+            # Determine offset: if max_vertex >= n, assume 1-based indexing
+            offset = 0 if max_vertex < self.n else max_vertex - self.n + 1
+            
+            if offset > 0:
+                for i in range(min(self.n, len(order_int_list))):
+                    if order_int_list[i] >= offset:
+                        order_int_list[i] = order_int_list[i] - offset
+            for i in range(min(self.n, len(order_int_list))):
+                self.order[i] = order_int_list[i]
         else:
             self.calculate_order_same()
         
@@ -946,7 +987,7 @@ def main() -> None:
         help="Start unit")
     parser.add_argument(
         "-a", "--order", type=str, default="DD",
-        help="Order mode")
+        help="Order mode (F:forced nodes (given in parameter); P:path; DA:degree ascending; DD:degree descending; O:v1,...,vn:custom order; other:same order)")
     parser.add_argument(
         "-n", "--not_limit_points", action="store_true",
         help="Turn off limiting points")
@@ -980,6 +1021,7 @@ def main() -> None:
         check = True
 
     g.set_verbose(args.verbose)
+    g.set_collect_work_summary(args.print_work_summary)
 
     if args.unit:
         g.set_unit(args.unit)
