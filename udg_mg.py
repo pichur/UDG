@@ -4,13 +4,13 @@
 #                                                           
 # ----------------------------------------------
 
-from asyncio import graph
 import math, sys, time, datetime
 from random import random, uniform, randint
 
 import argparse
 import Graph6Converter
 import networkx as nx
+import sys
 
 ## log levels
 NONE  = 0 # only results
@@ -1129,6 +1129,9 @@ def main() -> None:
         "-e", "--edge_list", action="store_true",
         help="Check graph given as edge list")
     parser.add_argument(
+        "-f", "--file", action="store_true",
+        help="Read graphs from file (one graph6 per line)")
+    parser.add_argument(
         "-p", "--print_vertex", action="store_true",
         help="Print coordinates for each vertex")
     parser.add_argument(
@@ -1161,133 +1164,169 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    # Process input - create array of graphs to process
+    graphs_to_process = []
 
-    if args.graph6:
-        g = Graph6Converter.g6_to_graph(args.graph)
-    elif args.edge_list:
-        g = Graph6Converter.edge_list_to_graph(args.graph)
+    if args.file:
+        # Read graphs from file and add to array
+        with open(args.graph, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    graphs_to_process.append(line)
+        # Open output file for writing
+        output_filename = args.graph + ".out"
+        output_file = open(output_filename, 'w')
+        # Redirect print to both console and file
+        original_stdout = sys.stdout
+        class DualOutput:
+            def __init__(self, file):
+                self.file = file
+                self.console = original_stdout
+            def write(self, text):
+                self.console.write(text)
+                self.file.write(text)
+            def flush(self):
+                self.console.flush()
+                self.file.flush()
+        sys.stdout = DualOutput(output_file)
     else:
-        print("Error: No input format specified.")
-        return
-    
-    G = create_empty_graph(g.number_of_nodes())
+        # Single graph - create single-element array
+        graphs_to_process.append(args.graph)
 
-    for e in g.edges():
-        add_edge(G, (e[0] + 1, e[1] + 1))  # converting from 0-based to 1-based indexing
+    # Process each graph in the array
+    for graph_index, graph_input in enumerate(graphs_to_process, 1):
+        if len(graphs_to_process) > 1:
+            print(f"\n{'='*60}")
+            print(f"Processing graph {graph_index}: {graph_input}")
+            print('='*60)
+
+        if args.graph6:
+            g = Graph6Converter.g6_to_graph(graph_input)
+        elif args.edge_list:
+            g = Graph6Converter.edge_list_to_graph(graph_input)
+        else:
+            print("Error: No input format specified.")
+            return
         
-    debug("edges = " + spillguts(G[NEIGHBORS]))
+        G = create_empty_graph(g.number_of_nodes())
 
-    set_placement_order(G, args.order)
+        for e in g.edges():
+            add_edge(G, (e[0] + 1, e[1] + 1))  # converting from 0-based to 1-based indexing
+            
+        debug("edges = " + spillguts(G[NEIGHBORS]))
 
-    if args.print_work_summary:
-        global collect_work_summary
-        collect_work_summary = True
+        set_placement_order(G, args.order)
 
-    if False:  # interactive mode
-        read_ordered_groups(G)
-        read_fixed_sectors(G)
-        read_symmetric_vertices(G)
-        read_placement_options(G)
+        if args.print_work_summary:
+            global collect_work_summary
+            collect_work_summary = True
 
-    MIN_K = args.init_gran
+        if False:  # interactive mode
+            read_ordered_groups(G)
+            read_fixed_sectors(G)
+            read_symmetric_vertices(G)
+            read_placement_options(G)
 
-    MAX_RECURSIVE_LEVELS = args.max_levels - 1
+        MIN_K = args.init_gran
 
-    global DISPLAY_PROGRESS
-    DISPLAY_PROGRESS = args.verbose
+        MAX_RECURSIVE_LEVELS = args.max_levels - 1
 
-    progress = initialize_progress()
-    
-    info("\n-------------------------")
-    info("\nWorking...")
+        global DISPLAY_PROGRESS
+        DISPLAY_PROGRESS = args.verbose
 
-    result = INCONCLUSIVE
-    result_msg = ""
-    elapsed_time = 0
-    global START_TIME
-    START_TIME = time.time()
+        progress = initialize_progress()
+        
+        info("\n-------------------------")
+        info("\nWorking...")
 
-    if MAX_TIME_YES_OPTIMIZATION != 0:
-        global OPTIMIZE_FOR_YES
-        OPTIMIZE_FOR_YES = True
-     
-        recursive_level = 0
-        while recursive_level <= MAX_RECURSIVE_LEVELS:
-            global TIME_LIMIT
-            TIME_LIMIT = get_elapsed_time() + MAX_TIME_YES_OPTIMIZATION
-            if MAX_TIME_GLOBAL > 0:
-                TIME_LIMIT = min(TIME_LIMIT, MAX_TIME_GLOBAL)
+        result = INCONCLUSIVE
+        result_msg = ""
+        elapsed_time = 0
+        global START_TIME
+        START_TIME = time.time()
 
-            if place_vertices(G, recursive_level, 0, progress, G[COORDINATES][:]):
+        if MAX_TIME_YES_OPTIMIZATION != 0:
+            global OPTIMIZE_FOR_YES
+            OPTIMIZE_FOR_YES = True
+        
+            recursive_level = 0
+            while recursive_level <= MAX_RECURSIVE_LEVELS:
+                global TIME_LIMIT
+                TIME_LIMIT = get_elapsed_time() + MAX_TIME_YES_OPTIMIZATION
+                if MAX_TIME_GLOBAL > 0:
+                    TIME_LIMIT = min(TIME_LIMIT, MAX_TIME_GLOBAL)
+
+                if place_vertices(G, recursive_level, 0, progress, G[COORDINATES][:]):
+                    if is_UDG_model(G[COORDINATES], G,
+                                    HALF_OF_GRAY_AREA_THICKNESS * G[COORDINATES][0]):
+                        # an UDG model (non-sandwich) was found!
+                        result_msg += obtain_printable_model(G, True)
+                        result_msg += "\n\nResult: UDG."
+                        result = YES
+                        break
+                    
+                recursive_level += 1
+                clear_coordinates(G)
+                    
+        if result == INCONCLUSIVE:
+
+            OPTIMIZE_FOR_YES = False
+            TIME_LIMIT = MAX_TIME_GLOBAL
+            clear_coordinates(G)
+
+            if place_vertices(G, 0, 0, progress, G[COORDINATES][:]):
                 if is_UDG_model(G[COORDINATES], G,
                                 HALF_OF_GRAY_AREA_THICKNESS * G[COORDINATES][0]):
                     # an UDG model (non-sandwich) was found!
                     result_msg += obtain_printable_model(G, True)
                     result_msg += "\n\nResult: UDG."
                     result = YES
-                    break
-                
-            recursive_level += 1
-            clear_coordinates(G)
-                
-    if result == INCONCLUSIVE:
+                else:
+                    result_msg += obtain_printable_model(G, False)
+                    result_msg += "\n\nThe program found a trigraph realization at the thinnest allowed granularity."
+                    result_msg += "\nThus, a cerficate for a NO answer could not be found."
+                    result_msg += "\n\nResult: INCONCLUSIVE."
+                    result = INCONCLUSIVE
 
-        OPTIMIZE_FOR_YES = False
-        TIME_LIMIT = MAX_TIME_GLOBAL
-        clear_coordinates(G)
-
-        if place_vertices(G, 0, 0, progress, G[COORDINATES][:]):
-            if is_UDG_model(G[COORDINATES], G,
-                            HALF_OF_GRAY_AREA_THICKNESS * G[COORDINATES][0]):
-                # an UDG model (non-sandwich) was found!
-                result_msg += obtain_printable_model(G, True)
-                result_msg += "\n\nResult: UDG."
-                result = YES
-            else:
-                result_msg += obtain_printable_model(G, False)
-                result_msg += "\n\nThe program found a trigraph realization at the thinnest allowed granularity."
-                result_msg += "\nThus, a cerficate for a NO answer could not be found."
+            elif G[COORDINATES][0] == TIMEOUT:
+                result_msg += "\n\nThe program reached the maximum allowed run time."
                 result_msg += "\n\nResult: INCONCLUSIVE."
                 result = INCONCLUSIVE
 
-        elif G[COORDINATES][0] == TIMEOUT:
-            result_msg += "\n\nThe program reached the maximum allowed run time."
-            result_msg += "\n\nResult: INCONCLUSIVE."
-            result = INCONCLUSIVE
+            elif G[COORDINATES][0] in [0, MIN_K * 2**MAX_RECURSIVE_LEVELS]:
+                result_msg += obtain_printable_model(G, False)
+                result_msg += "\n\nThe program reached the maximum intended granularity."
+                result_msg += "\nIt went through to granularity parameter k = %d \nand (still) " + \
+                            "a trigraph realization -- but no UDG model! -- was found." % G[COORDINATES][0]
+                result_msg += "\n\nResult: INCONCLUSIVE."
+                result = INCONCLUSIVE
+                
+            else:
+                # no UDG sandwich model was found for a certain K factor
+                result_msg += "\n\nThere are no sandwich UDG models (trigraph embodiments) in the k=%d granularity." % (max(MIN_K, G[COORDINATES][0] * 2))
+                result_msg += "\n\nResult: NOT UDG."
+                result = NO
 
-        elif G[COORDINATES][0] in [0, MIN_K * 2**MAX_RECURSIVE_LEVELS]:
-            result_msg += obtain_printable_model(G, False)
-            result_msg += "\n\nThe program reached the maximum intended granularity."
-            result_msg += "\nIt went through to granularity parameter k = %d \nand (still) " + \
-                          "a trigraph realization -- but no UDG model! -- was found." % G[COORDINATES][0]
-            result_msg += "\n\nResult: INCONCLUSIVE."
-            result = INCONCLUSIVE
-            
-        else:
-            # no UDG sandwich model was found for a certain K factor
-            result_msg += "\n\nThere are no sandwich UDG models (trigraph embodiments) in the k=%d granularity." % (max(MIN_K, G[COORDINATES][0] * 2))
-            result_msg += "\n\nResult: NOT UDG."
-            result = NO
+        elapsed_time = get_elapsed_time()
+        result_msg += "\n(Took " + format_time(elapsed_time, True) + ".)"
 
-    elapsed_time = get_elapsed_time()
-    result_msg += "\n(Took " + format_time(elapsed_time, True) + ".)"
+        if args.print_work_summary:
+            print(f"Placement order: {G[PLACEMENT_ORDER]}")
+            print(f"Total place_next_vertex calls: {place_next_vertex_counter}")
+            print(f"  lvl:ord  calls")
+            for level, counters in enumerate(place_next_vertex_by_level_and_order_counter):
+                for order, count in enumerate(counters):
+                    print(f"  {level:3d}:{order:3d}  {count:9,d}".replace(',', ' '))
 
-    if args.print_work_summary:
-        print(f"Placement order: {G[PLACEMENT_ORDER]}")
-        print(f"Total place_next_vertex calls: {place_next_vertex_counter}")
-        print(f"  lvl:ord  calls")
-        for level, counters in enumerate(place_next_vertex_by_level_and_order_counter):
-            for order, count in enumerate(counters):
-                print(f"  {level:3d}:{order:3d}  {count:9,d}".replace(',', ' '))
-
-    print(result_msg)
-    print("\n=====================================\n")
-    if args.print_vertex:
-        print("\nVertex coordinates:")
-        n = G[NUMBER_OF_VERTICES]
-        for i in range(1, n+1):
-            coordinate = G[COORDINATES][i]
-            print("Vertex %d: %s" % (i, spillguts(coordinate)))
+        print(result_msg)
+        print("\n=====================================\n")
+        if args.print_vertex:
+            print("\nVertex coordinates:")
+            n = G[NUMBER_OF_VERTICES]
+            for i in range(1, n+1):
+                coordinate = G[COORDINATES][i]
+                print("Vertex %d: %s" % (i, spillguts(coordinate)))
 
 if __name__ == "__main__":
     main()
