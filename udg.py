@@ -555,6 +555,7 @@ class Graph:
                 self.mark_place_next_vertex_process(j)
             
             if self.verbose:
+                print(f"vertex = {self.order[j]} already_placed = {j} coordinates = {self.print_coordinates(j)}")
                 point_iter += 1
                 self.set_iteration_index(vertex, point_iter)
                 if time.time() - self.last_verbose_time > 10:
@@ -590,6 +591,22 @@ class Graph:
             return NO
 
         return TRIGRAPH
+    
+    def print_coordinates(self, placed: int) -> str:
+        """Format coordinates in the requested format: [( 0, 0),(+7,-2),(-3,+5),(+3,+4),(+4, 0),(-1,+4),  None ]"""
+        coords = []
+        for i in range(self.n): coords.append("   None")
+        for i in range(placed + 1):
+            vertex = self.order[i]
+            coord = self.coordinates[vertex]
+            x = coord.x
+            y = coord.y
+            # Format with proper signs
+            x_str = f"{x:+d}" if x != 0 else " 0"
+            y_str = f"{y:+d}" if y != 0 else " 0"
+            coords[vertex] = f"({x_str},{y_str})"
+        
+        return "[" + ",".join(coords) + " ]"
     
     def state_info(self, only_I: bool, j:int) -> str:
         info = f" {'I' if only_I else 'A'}"
@@ -713,6 +730,10 @@ class Graph:
             # Keep first two nodes and set rest to -1
             if len(self.order) >= 2:
                 self.order = list(self.order[:2]) + [-1] * (len(self.order) - 2)
+        
+        if self.verbose:
+            print(f"Using order mode: {self.order_mode}")
+            print(f"Work order: {self.order}")
     
     def calculate_order_by_forced_nodes(self, force_nodes: list[int]):
         """Calculate a work order of the graph starting from the given forced nodes."""
