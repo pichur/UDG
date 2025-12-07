@@ -1119,7 +1119,7 @@ def place_vertices(graph, recursive_level, already_placed, progress, coordinates
 
 def main() -> None:
     # abcdefghijklmnopqrstuvwxyz
-    # -b---f-hij--mno-qr-t--wxyz
+    # -b---f-hij--mno-qr-t---xyz
     parser = argparse.ArgumentParser(description="Check if a graph is a Unit Disk Graph (UDG).")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
@@ -1144,6 +1144,9 @@ def main() -> None:
         "-v", "--verbose", action="store_true",
         help="Enable verbose output for debugging")
     parser.add_argument(
+        "-w", "--log_level", type=int, default=NONE,
+        help="Log level to set (0=NONE, 1=LOW, 2=MEDIUM, 3=HIGH), default NONE")
+    parser.add_argument(
         "-u", "--unit", type=int,
         help="Start unit")
     parser.add_argument(
@@ -1163,6 +1166,13 @@ def main() -> None:
         help="Input graph description")
 
     args = parser.parse_args()
+
+    global DISPLAY_PROGRESS
+    DISPLAY_PROGRESS = args.verbose
+
+    global LOG_LEVEL
+    if args.log_level >= NONE and args.log_level <= HIGH:
+        LOG_LEVEL = args.log_level
 
     # Process input - create array of graphs to process
     graphs_to_process = []
@@ -1186,6 +1196,7 @@ def main() -> None:
             def write(self, text):
                 self.console.write(text)
                 self.file.write(text)
+                self.file.flush()
             def flush(self):
                 self.console.flush()
                 self.file.flush()
@@ -1231,9 +1242,6 @@ def main() -> None:
         MIN_K = args.init_gran
 
         MAX_RECURSIVE_LEVELS = args.max_levels - 1
-
-        global DISPLAY_PROGRESS
-        DISPLAY_PROGRESS = args.verbose
 
         progress = initialize_progress()
         
