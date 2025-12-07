@@ -1,0 +1,582 @@
+
+============================================================
+Processing graph 1: F??Fw
+============================================================
+
+
+The program reached the maximum allowed run time.
+
+Result: INCONCLUSIVE.
+(Took 7 days, 0 second.)
+
+=====================================
+
+
+============================================================
+Processing graph 2: F?AFo
+============================================================
+mandatory_radius = 70000
+gray_area_thickness = 0
+
+Final granularity = 7/80
+
+Coordinates (upscaled by 70000):
+1: (113136,21213)
+2: (0,0)
+3: (106065,-49497)
+4: (49497,63639)
+5: (35355,-63639)
+6: (176775,-7071)
+7: (56568,0)
+
+Adjacency types and distances (upscaled by 70000):
+(1,2) = forbidden [distance = 115107.5]
+(1,3) = forbidden [distance = 71062.7]
+(1,4) = forbidden [distance = 76484.6]
+(1,5) = forbidden [distance = 115107.5]
+(1,6) = mandatory [distance = 69641.3]
+(1,7) = mandatory [distance = 60414.7]
+(2,3) = forbidden [distance = 117045.9]
+(2,4) = forbidden [distance = 80621.8]
+(2,5) = forbidden [distance = 72800.4]
+(2,6) = forbidden [distance = 176916.4]
+(2,7) = mandatory [distance = 56568.0]
+(3,4) = forbidden [distance = 126489.9]
+(3,5) = forbidden [distance = 72110.3]
+(3,6) = forbidden [distance = 82461.3]
+(3,7) = mandatory [distance = 69999.3]
+(4,5) = forbidden [distance = 128061.3]
+(4,6) = forbidden [distance = 145600.8]
+(4,7) = mandatory [distance = 64030.6]
+(5,6) = forbidden [distance = 152314.0]
+(5,7) = mandatory [distance = 67081.4]
+(6,7) = forbidden [distance = 120414.8]
+
+Result: UDG.
+(Took 1110 ms.)
+
+=====================================
+
+
+============================================================
+Processing graph 3: F?AFw
+============================================================
+mandatory_radius = 70000
+gray_area_thickness = 0
+
+Final granularity = 7/80
+
+Coordinates (upscaled by 70000):
+1: (113136,21213)
+2: (0,0)
+3: (106065,-49497)
+4: (49497,63639)
+5: (35355,-63639)
+6: (106065,21213)
+7: (56568,0)
+
+Adjacency types and distances (upscaled by 70000):
+(1,2) = forbidden [distance = 115107.5]
+(1,3) = forbidden [distance = 71062.7]
+(1,4) = forbidden [distance = 76484.6]
+(1,5) = forbidden [distance = 115107.5]
+(1,6) = mandatory [distance = 7071.0]
+(1,7) = mandatory [distance = 60414.7]
+(2,3) = forbidden [distance = 117045.9]
+(2,4) = forbidden [distance = 80621.8]
+(2,5) = forbidden [distance = 72800.4]
+(2,6) = forbidden [distance = 108165.5]
+(2,7) = mandatory [distance = 56568.0]
+(3,4) = forbidden [distance = 126489.9]
+(3,5) = forbidden [distance = 72110.3]
+(3,6) = forbidden [distance = 70710.0]
+(3,7) = mandatory [distance = 69999.3]
+(4,5) = forbidden [distance = 128061.3]
+(4,6) = forbidden [distance = 70710.0]
+(4,7) = mandatory [distance = 64030.6]
+(5,6) = forbidden [distance = 110452.6]
+(5,7) = mandatory [distance = 67081.4]
+(6,7) = mandatory [distance = 53851.1]
+
+Result: UDG.
+(Took 1028 ms.)
+
+=====================================
+
+
+============================================================
+Processing graph 4: F?B@w
+============================================================
+mandatory_radius = 30000
+gray_area_thickness = 0
+
+Final granularity = 7/40
+
+Coordinates (upscaled by 30000):
+1: (0,0)
+2: (49497,7071)
+3: (42426,-56568)
+4: (7071,-35355)
+5: (56568,-28284)
+6: (28284,0)
+7: (35355,-28284)
+
+Adjacency types and distances (upscaled by 30000):
+(1,2) = forbidden [distance = 49999.5]
+(1,3) = forbidden [distance = 70710.0]
+(1,4) = forbidden [distance = 36055.2]
+(1,5) = forbidden [distance = 63244.9]
+(1,6) = mandatory [distance = 28284.0]
+(1,7) = forbidden [distance = 45276.5]
+(2,3) = forbidden [distance = 64030.6]
+(2,4) = forbidden [distance = 59999.4]
+(2,5) = forbidden [distance = 36055.2]
+(2,6) = mandatory [distance = 22360.5]
+(2,7) = forbidden [distance = 38078.5]
+(3,4) = forbidden [distance = 41230.7]
+(3,5) = forbidden [distance = 31622.5]
+(3,6) = forbidden [distance = 58309.0]
+(3,7) = mandatory [distance = 29154.5]
+(4,5) = forbidden [distance = 49999.5]
+(4,6) = forbidden [distance = 41230.7]
+(4,7) = mandatory [distance = 29154.5]
+(5,6) = forbidden [distance = 39999.6]
+(5,7) = mandatory [distance = 21213.0]
+(6,7) = mandatory [distance = 29154.5]
+
+Result: UDG.
+(Took 3 ms.)
+
+=====================================
+
+
+============================================================
+Processing graph 5: F?BDo
+============================================================
+mandatory_radius = 10000
+gray_area_thickness = 0
+
+Final granularity = 7/20
+
+Coordinates (upscaled by 10000):
+1: (14142,7071)
+2: (0,0)
+3: (28284,7071)
+4: (14142,21213)
+5: (28284,21213)
+6: (7071,0)
+7: (21213,14142)
+
+Adjacency types and distances (upscaled by 10000):
+(1,2) = forbidden [distance = 15811.2]
+(1,3) = forbidden [distance = 14142.0]
+(1,4) = forbidden [distance = 14142.0]
+(1,5) = forbidden [distance = 19999.8]
+(1,6) = mandatory [distance = 9999.9]
+(1,7) = mandatory [distance = 9999.9]
+(2,3) = forbidden [distance = 29154.5]
+(2,4) = forbidden [distance = 25494.9]
+(2,5) = forbidden [distance = 35355.0]
+(2,6) = mandatory [distance = 7071.0]
+(2,7) = forbidden [distance = 25494.9]
+(3,4) = forbidden [distance = 19999.8]
+(3,5) = forbidden [distance = 14142.0]
+(3,6) = forbidden [distance = 22360.5]
+(3,7) = mandatory [distance = 9999.9]
+(4,5) = forbidden [distance = 14142.0]
+(4,6) = forbidden [distance = 22360.5]
+(4,7) = mandatory [distance = 9999.9]
+(5,6) = forbidden [distance = 29999.7]
+(5,7) = mandatory [distance = 9999.9]
+(6,7) = forbidden [distance = 19999.8]
+
+Result: UDG.
+(Took 0 ms.)
+
+=====================================
+
+
+============================================================
+Processing graph 6: F?BDw
+============================================================
+mandatory_radius = 30000
+gray_area_thickness = 0
+
+Final granularity = 7/40
+
+Coordinates (upscaled by 30000):
+1: (49497,7071)
+2: (0,0)
+3: (63639,-35355)
+4: (28284,-35355)
+5: (77781,-7071)
+6: (28284,0)
+7: (49497,-14142)
+
+Adjacency types and distances (upscaled by 30000):
+(1,2) = forbidden [distance = 49999.5]
+(1,3) = forbidden [distance = 44720.9]
+(1,4) = forbidden [distance = 47433.7]
+(1,5) = forbidden [distance = 31622.5]
+(1,6) = mandatory [distance = 22360.5]
+(1,7) = mandatory [distance = 21213.0]
+(2,3) = forbidden [distance = 72800.4]
+(2,4) = forbidden [distance = 45276.5]
+(2,5) = forbidden [distance = 78101.7]
+(2,6) = mandatory [distance = 28284.0]
+(2,7) = forbidden [distance = 51477.7]
+(3,4) = forbidden [distance = 35355.0]
+(3,5) = forbidden [distance = 31622.5]
+(3,6) = forbidden [distance = 49999.5]
+(3,7) = mandatory [distance = 25494.9]
+(4,5) = forbidden [distance = 57008.2]
+(4,6) = forbidden [distance = 35355.0]
+(4,7) = mandatory [distance = 29999.7]
+(5,6) = forbidden [distance = 49999.5]
+(5,7) = mandatory [distance = 29154.5]
+(6,7) = mandatory [distance = 25494.9]
+
+Result: UDG.
+(Took 3 ms.)
+
+=====================================
+
+
+============================================================
+Processing graph 7: F?BFo
+============================================================
+mandatory_radius = 70000
+gray_area_thickness = 0
+
+Final granularity = 7/80
+
+Coordinates (upscaled by 70000):
+1: (113136,21213)
+2: (106065,-49497)
+3: (0,0)
+4: (49497,63639)
+5: (35355,-63639)
+6: (155562,-14142)
+7: (56568,0)
+
+Adjacency types and distances (upscaled by 70000):
+(1,2) = forbidden [distance = 71062.7]
+(1,3) = forbidden [distance = 115107.5]
+(1,4) = forbidden [distance = 76484.6]
+(1,5) = forbidden [distance = 115107.5]
+(1,6) = mandatory [distance = 55226.3]
+(1,7) = mandatory [distance = 60414.7]
+(2,3) = forbidden [distance = 117045.9]
+(2,4) = forbidden [distance = 126489.9]
+(2,5) = forbidden [distance = 72110.3]
+(2,6) = mandatory [distance = 60827.0]
+(2,7) = mandatory [distance = 69999.3]
+(3,4) = forbidden [distance = 80621.8]
+(3,5) = forbidden [distance = 72800.4]
+(3,6) = forbidden [distance = 156203.5]
+(3,7) = mandatory [distance = 56568.0]
+(4,5) = forbidden [distance = 128061.3]
+(4,6) = forbidden [distance = 131528.2]
+(4,7) = mandatory [distance = 64030.6]
+(5,6) = forbidden [distance = 129998.8]
+(5,7) = mandatory [distance = 67081.4]
+(6,7) = forbidden [distance = 99999.0]
+
+Result: UDG.
+(Took 1164 ms.)
+
+=====================================
+
+
+============================================================
+Processing graph 8: F?BFw
+============================================================
+mandatory_radius = 70000
+gray_area_thickness = 0
+
+Final granularity = 7/80
+
+Coordinates (upscaled by 70000):
+1: (113136,21213)
+2: (106065,-49497)
+3: (0,0)
+4: (49497,63639)
+5: (35355,-63639)
+6: (106065,-42426)
+7: (56568,0)
+
+Adjacency types and distances (upscaled by 70000):
+(1,2) = forbidden [distance = 71062.7]
+(1,3) = forbidden [distance = 115107.5]
+(1,4) = forbidden [distance = 76484.6]
+(1,5) = forbidden [distance = 115107.5]
+(1,6) = mandatory [distance = 64030.6]
+(1,7) = mandatory [distance = 60414.7]
+(2,3) = forbidden [distance = 117045.9]
+(2,4) = forbidden [distance = 126489.9]
+(2,5) = forbidden [distance = 72110.3]
+(2,6) = mandatory [distance = 7071.0]
+(2,7) = mandatory [distance = 69999.3]
+(3,4) = forbidden [distance = 80621.8]
+(3,5) = forbidden [distance = 72800.4]
+(3,6) = forbidden [distance = 114235.5]
+(3,7) = mandatory [distance = 56568.0]
+(4,5) = forbidden [distance = 128061.3]
+(4,6) = forbidden [distance = 120207.0]
+(4,7) = mandatory [distance = 64030.6]
+(5,6) = forbidden [distance = 73823.4]
+(5,7) = mandatory [distance = 67081.4]
+(6,7) = mandatory [distance = 65191.4]
+
+Result: UDG.
+(Took 1051 ms.)
+
+=====================================
+
+
+============================================================
+Processing graph 9: F?Bco
+============================================================
+mandatory_radius = 10000
+gray_area_thickness = 0
+
+Final granularity = 7/20
+
+Coordinates (upscaled by 10000):
+1: (14142,7071)
+2: (0,0)
+3: (14142,-7071)
+4: (0,21213)
+5: (14142,21213)
+6: (7071,0)
+7: (7071,14142)
+
+Adjacency types and distances (upscaled by 10000):
+(1,2) = forbidden [distance = 15811.2]
+(1,3) = forbidden [distance = 14142.0]
+(1,4) = forbidden [distance = 19999.8]
+(1,5) = forbidden [distance = 14142.0]
+(1,6) = mandatory [distance = 9999.9]
+(1,7) = mandatory [distance = 9999.9]
+(2,3) = forbidden [distance = 15811.2]
+(2,4) = forbidden [distance = 21213.0]
+(2,5) = forbidden [distance = 25494.9]
+(2,6) = mandatory [distance = 7071.0]
+(2,7) = forbidden [distance = 15811.2]
+(3,4) = forbidden [distance = 31622.5]
+(3,5) = forbidden [distance = 28284.0]
+(3,6) = mandatory [distance = 9999.9]
+(3,7) = forbidden [distance = 22360.5]
+(4,5) = forbidden [distance = 14142.0]
+(4,6) = forbidden [distance = 22360.5]
+(4,7) = mandatory [distance = 9999.9]
+(5,6) = forbidden [distance = 22360.5]
+(5,7) = mandatory [distance = 9999.9]
+(6,7) = forbidden [distance = 14142.0]
+
+Result: UDG.
+(Took 6 ms.)
+
+=====================================
+
+
+============================================================
+Processing graph 10: F?Bcw
+============================================================
+mandatory_radius = 30000
+gray_area_thickness = 0
+
+Final granularity = 7/40
+
+Coordinates (upscaled by 30000):
+1: (49497,7071)
+2: (0,0)
+3: (35355,-28284)
+4: (77781,-14142)
+5: (77781,21213)
+6: (28284,0)
+7: (56568,0)
+
+Adjacency types and distances (upscaled by 30000):
+(1,2) = forbidden [distance = 49999.5]
+(1,3) = forbidden [distance = 38078.5]
+(1,4) = forbidden [distance = 35355.0]
+(1,5) = forbidden [distance = 31622.5]
+(1,6) = mandatory [distance = 22360.5]
+(1,7) = mandatory [distance = 9999.9]
+(2,3) = forbidden [distance = 45276.5]
+(2,4) = forbidden [distance = 79056.2]
+(2,5) = forbidden [distance = 80621.8]
+(2,6) = mandatory [distance = 28284.0]
+(2,7) = forbidden [distance = 56568.0]
+(3,4) = forbidden [distance = 44720.9]
+(3,5) = forbidden [distance = 65191.4]
+(3,6) = mandatory [distance = 29154.5]
+(3,7) = forbidden [distance = 35355.0]
+(4,5) = forbidden [distance = 35355.0]
+(4,6) = forbidden [distance = 51477.7]
+(4,7) = mandatory [distance = 25494.9]
+(5,6) = forbidden [distance = 53851.1]
+(5,7) = mandatory [distance = 29999.7]
+(6,7) = mandatory [distance = 28284.0]
+
+Result: UDG.
+(Took 1 ms.)
+
+=====================================
+
+
+============================================================
+Processing graph 11: F?Beo
+============================================================
+mandatory_radius = 10000
+gray_area_thickness = 0
+
+Final granularity = 7/20
+
+Coordinates (upscaled by 10000):
+1: (14142,7071)
+2: (14142,-7071)
+3: (0,0)
+4: (28284,7071)
+5: (28284,-7071)
+6: (7071,0)
+7: (21213,0)
+
+Adjacency types and distances (upscaled by 10000):
+(1,2) = forbidden [distance = 14142.0]
+(1,3) = forbidden [distance = 15811.2]
+(1,4) = forbidden [distance = 14142.0]
+(1,5) = forbidden [distance = 19999.8]
+(1,6) = mandatory [distance = 9999.9]
+(1,7) = mandatory [distance = 9999.9]
+(2,3) = forbidden [distance = 15811.2]
+(2,4) = forbidden [distance = 19999.8]
+(2,5) = forbidden [distance = 14142.0]
+(2,6) = mandatory [distance = 9999.9]
+(2,7) = mandatory [distance = 9999.9]
+(3,4) = forbidden [distance = 29154.5]
+(3,5) = forbidden [distance = 29154.5]
+(3,6) = mandatory [distance = 7071.0]
+(3,7) = forbidden [distance = 21213.0]
+(4,5) = forbidden [distance = 14142.0]
+(4,6) = forbidden [distance = 22360.5]
+(4,7) = mandatory [distance = 9999.9]
+(5,6) = forbidden [distance = 22360.5]
+(5,7) = mandatory [distance = 9999.9]
+(6,7) = forbidden [distance = 14142.0]
+
+Result: UDG.
+(Took 3 ms.)
+
+=====================================
+
+
+============================================================
+Processing graph 12: F?Bew
+============================================================
+mandatory_radius = 30000
+gray_area_thickness = 0
+
+Final granularity = 7/40
+
+Coordinates (upscaled by 30000):
+1: (49497,7071)
+2: (35355,-28284)
+3: (0,0)
+4: (77781,-14142)
+5: (63639,-42426)
+6: (28284,0)
+7: (49497,-21213)
+
+Adjacency types and distances (upscaled by 30000):
+(1,2) = forbidden [distance = 38078.5]
+(1,3) = forbidden [distance = 49999.5]
+(1,4) = forbidden [distance = 35355.0]
+(1,5) = forbidden [distance = 51477.7]
+(1,6) = mandatory [distance = 22360.5]
+(1,7) = mandatory [distance = 28284.0]
+(2,3) = forbidden [distance = 45276.5]
+(2,4) = forbidden [distance = 44720.9]
+(2,5) = forbidden [distance = 31622.5]
+(2,6) = mandatory [distance = 29154.5]
+(2,7) = mandatory [distance = 15811.2]
+(3,4) = forbidden [distance = 79056.2]
+(3,5) = forbidden [distance = 76484.6]
+(3,6) = mandatory [distance = 28284.0]
+(3,7) = forbidden [distance = 53851.1]
+(4,5) = forbidden [distance = 31622.5]
+(4,6) = forbidden [distance = 51477.7]
+(4,7) = mandatory [distance = 29154.5]
+(5,6) = forbidden [distance = 55226.3]
+(5,7) = mandatory [distance = 25494.9]
+(6,7) = mandatory [distance = 29999.7]
+
+Result: UDG.
+(Took 4 ms.)
+
+=====================================
+
+
+============================================================
+Processing graph 13: F?Bfo
+============================================================
+
+
+The program reached the maximum allowed run time.
+
+Result: INCONCLUSIVE.
+(Took 7 days, 0 second.)
+
+=====================================
+
+
+============================================================
+Processing graph 14: F?Bfw
+============================================================
+mandatory_radius = 70000
+gray_area_thickness = 0
+
+Final granularity = 7/80
+
+Coordinates (upscaled by 70000):
+1: (113136,21213)
+2: (106065,-49497)
+3: (49497,63639)
+4: (0,0)
+5: (35355,-63639)
+6: (98994,14142)
+7: (56568,0)
+
+Adjacency types and distances (upscaled by 70000):
+(1,2) = forbidden [distance = 71062.7]
+(1,3) = forbidden [distance = 76484.6]
+(1,4) = forbidden [distance = 115107.5]
+(1,5) = forbidden [distance = 115107.5]
+(1,6) = mandatory [distance = 15811.2]
+(1,7) = mandatory [distance = 60414.7]
+(2,3) = forbidden [distance = 126489.9]
+(2,4) = forbidden [distance = 117045.9]
+(2,5) = forbidden [distance = 72110.3]
+(2,6) = mandatory [distance = 64030.6]
+(2,7) = mandatory [distance = 69999.3]
+(3,4) = forbidden [distance = 80621.8]
+(3,5) = forbidden [distance = 128061.3]
+(3,6) = mandatory [distance = 69999.3]
+(3,7) = mandatory [distance = 64030.6]
+(4,5) = forbidden [distance = 72800.4]
+(4,6) = forbidden [distance = 99999.0]
+(4,7) = mandatory [distance = 56568.0]
+(5,6) = forbidden [distance = 100497.8]
+(5,7) = mandatory [distance = 67081.4]
+(6,7) = mandatory [distance = 44720.9]
+
+Result: UDG.
+(Took 1251 ms.)
+
+=====================================
+
+
+============================================================
+Processing graph 15: F?BvO
+============================================================
