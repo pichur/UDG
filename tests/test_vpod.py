@@ -89,28 +89,28 @@ class TestVertexPairOrbits(unittest.TestCase):
         self.assertEqual(pairs, [(0, 1)])
 
     def test_process_graph_p4_u4(self):
-        orbits = process_graph("4: 0,1 1,2 2,3", g6=False, unit=4, print_result=False, verbose=False)
-
-        # Check the number of orbits
-        self.assertEqual(len(orbits), 4)
-
-        # Check the content of each orbit
-        self.assertEqual(orbits[0], ('E', 1, [(0, 1), (2, 3)], None, (0,  5, True)))
-        self.assertEqual(orbits[1], ('n', 2, [(0, 2), (1, 3)], None, (3,  9, True)))
-        self.assertEqual(orbits[2], ('n', 3, [(0, 3)        ], None, (3, 13, True)))
-        self.assertEqual(orbits[3], ('E', 1, [(1, 2)        ], None, (0,  5, True)))
-
-    def test_process_graph_p4_u8(self):
         orbits = process_graph("4: 0,1 1,2 2,3", g6=False, unit=8, print_result=False, verbose=False)
 
         # Check the number of orbits
         self.assertEqual(len(orbits), 4)
 
         # Check the content of each orbit
-        self.assertEqual(orbits[0], ('E', 1, [(0, 1), (2, 3)], ( 4,  6, True), (0,  9, True)))
-        self.assertEqual(orbits[1], ('n', 2, [(0, 2), (1, 3)], (10, 12, True), (7, 17, True)))
-        self.assertEqual(orbits[2], ('n', 3, [(0, 3)        ], (10, 18, True), (7, 25, True)))
-        self.assertEqual(orbits[3], ('E', 1, [(1, 2)        ], ( 4,  6, True), (0,  9, True)))
+        self.assertEqual(orbits[0], ('E', 1, [(0, 1), (2, 3)], (2,  7, True), (0,  8, True)))
+        self.assertEqual(orbits[1], ('n', 2, [(0, 2), (1, 3)], (9, 13, True), (8, 15, True)))
+        self.assertEqual(orbits[2], ('n', 3, [(0, 3)        ], (9, 20, True), (8, 23, True)))
+        self.assertEqual(orbits[3], ('E', 1, [(1, 2)        ], (2,  7, True), (0,  8, True)))
+
+    def test_process_graph_p4_u8(self):
+        orbits = process_graph("4: 0,1 1,2 2,3", g6=False, unit=13, print_result=False, verbose=False)
+
+        # Check the number of orbits
+        self.assertEqual(len(orbits), 4)
+
+        # Check the content of each orbit
+        self.assertEqual(orbits[0], ('E', 1, [(0, 1), (2, 3)], ( 2, 12, True), ( 0, 13, True)))
+        self.assertEqual(orbits[1], ('n', 2, [(0, 2), (1, 3)], (14, 23, True), (13, 25, True)))
+        self.assertEqual(orbits[2], ('n', 3, [(0, 3)        ], (14, 35, True), (13, 38, True)))
+        self.assertEqual(orbits[3], ('E', 1, [(1, 2)        ], ( 2, 12, True), ( 0, 13, True)))
 
 if __name__ == "__main__":
     unittest.main()

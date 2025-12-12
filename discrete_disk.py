@@ -37,14 +37,19 @@ opts = Options()
 
 def R_CALC(mode:str = '1'):
     """Calculate the ranges for discrete disks."""
-    global RI, RO, RIS, ROS
+    global RI, RE, RO, RIS, RES, ROS
     RI  = np.empty(N, dtype='int64')
+    RE  = np.empty(N, dtype='int64')
     RO  = np.empty(N, dtype='int64')
     RIS = np.empty(N, dtype='int64')
+    RES = np.empty(N, dtype='int64')
     ROS = np.empty(N, dtype='int64')
     RI [0] = 0
+    RE [0] = 0
     RO [0] = 1
+
     RIS[0] = 0
+    RES[0] = 0
     ROS[0] = 2
     for i in range(1,N):
         if mode == '1':
@@ -52,17 +57,21 @@ def R_CALC(mode:str = '1'):
             b = i*DSQRT2
             c = 2
             RI [i] = np.floor(np.sqrt(a - b + c))
+            RE [i] = i
             RO [i] = np.floor(np.sqrt(a + b + c))
             RIS[i] = np.floor(a - b + c)
+            RES[i] = a
             ROS[i] = np.floor(a + b + c)
         else:
             RI [i] = i - 1
+            RE [i] = i
             RO [i] = i + 1
             RIS[i] = RI[i]**2
+            RES[i] = RE[i]**2
             ROS[i] = RO[i]**2
 R_CALC(mode='1')
 
-idx = lambda i,j: i*N - i*(i+1)//2 + (j-i)  # i<j
+idx = lambda i,j: i*N - i*(i-1)//2 + (j-i)  # i<j
 
 def D_CALC():
     global DS
@@ -75,30 +84,28 @@ D_CALC()
 
 def symmetric_set(M: np.ndarray, i: int, j: int, radius: int, symbol: np.uint8) -> None:
     """Ustawia symetryczne komórki w macierzy M."""
-    M[radius + i, radius + j] = symbol
-    M[radius + i, radius - j] = symbol
-    M[radius - i, radius + j] = symbol
-    M[radius - i, radius - j] = symbol
-    M[radius + j, radius + i] = symbol
-    M[radius + j, radius - i] = symbol
-    M[radius - j, radius + i] = symbol
-    M[radius - j, radius - i] = symbol
+    M[radius + i - 1, radius + j - 1] = symbol
+    M[radius + i - 1, radius - j    ] = symbol
+    M[radius - i    , radius + j - 1] = symbol
+    M[radius - i    , radius - j    ] = symbol
+    M[radius + j - 1, radius + i - 1] = symbol
+    M[radius + j - 1, radius - i    ] = symbol
+    M[radius - j    , radius + i - 1] = symbol
+    M[radius - j    , radius - i    ] = symbol
 
 def _get_from_disk_cache(radius: int, connected: bool) -> np.ndarray:
     if radius not in _disk_cache:
-        r = radius + 1  # radius + margin=floor(sqrt(2))
-        # + 1 for 0; C = Connected, D = Disconnected
-        C = np.full((2 * r + 1, 2 * r + 1), MODE_I, dtype=np.uint8)
-        D = np.full((2 * r + 1, 2 * r + 1), MODE_O, dtype=np.uint8)
-        for ix in range(r + 1):
-            for iy in range(ix, r + 1):
-                if DS[idx(ix, iy)] >= ROS[radius]:
-                    symmetric_set(C, ix, iy, r, MODE_O)
-                    symmetric_set(D, ix, iy, r, MODE_I)
-                elif DS[idx(ix, iy)] > RIS[radius]:
-                    symmetric_set(C, ix, iy, r, MODE_B)
-                    symmetric_set(D, ix, iy, r, MODE_B)
-
+        # C = Connected, D = Disconnected
+        C = np.full((2 * radius, 2 * radius), MODE_O, dtype=np.uint8)
+        D = np.full((2 * radius, 2 * radius), MODE_I, dtype=np.uint8)
+        for ix in range(1, radius + 1):
+            for iy in range(ix, radius + 1):
+                if DS[idx(ix, iy)] <= RES[radius]:
+                    symmetric_set(C, ix, iy, radius, MODE_I)
+                    symmetric_set(D, ix, iy, radius, MODE_O)
+                elif DS[idx(ix-1, iy-1)] < RES[radius]:
+                    symmetric_set(C, ix, iy, radius, MODE_B)
+                    symmetric_set(D, ix, iy, radius, MODE_B)
         C.setflags(write=False)
         D.setflags(write=False)
         _disk_cache[radius] = (C, D)
@@ -141,9 +148,8 @@ class DiscreteDisk:
     
     @classmethod
     def disk(cls, radius: int = 4, x: int = 0, y: int = 0, connected: bool = True) -> "DiscreteDisk":
-        r = radius + 1  # radius + margin=floor(sqrt(2))
         M = _get_from_disk_cache(radius, connected)
-        return cls(M, MODE_O if connected else MODE_I, x - r, y - r, True)
+        return cls(M, MODE_O if connected else MODE_I, x - radius, y - radius, True)
 
     def points_iter(self, types: str = 'IB'):
         """Iterate over points of selected types."""
@@ -160,7 +166,7 @@ class DiscreteDisk:
         values = self.data[ys, xs]
         x0, y0 = self.x, self.y
         for iy, ix, val in zip(ys, xs, values):
-            yield Coordinate(x0 + ix, y0 + iy, val)
+            yield Coordinate(x0 + ix + 1, y0 + iy + 1, val)
 
     def points_IB_iter(self):
         self.points_iter('I')
@@ -200,38 +206,35 @@ class DiscreteDisk:
             self.data.setflags(write=True)
             self._shared = False
 
-        h, w = self.data.shape
+        ah, aw = self.data.shape
+        ay = self.y
+        ax = self.x
 
-        # Calculate relative position of b in self's coordinates
-        bx = b.x - self.x
-        by = b.y - self.y
+        bh, bw = b.data.shape
+        by = b.y
+        bx = b.x
 
-        # Find overlap region
-        iay0 = max(0, by)
-        iay1 = min(h, by + b.data.shape[0])
-        iax0 = max(0, bx)
-        iax1 = min(w, bx + b.data.shape[1])
+        # Find overlap region in relative coordinates
+        oy1 = max(ay, by)
+        ox1 = max(ax, bx)
+        oy2 = min(ay + ah, by + bh)
+        ox2 = min(ax + aw, bx + bw)
 
-        iby0 = max(0, -by)
-        iby1 = min(h, -by + b.data.shape[0])
-        ibx0 = max(0, -bx)
-        ibx1 = min(w, -bx + b.data.shape[1])
-        
-        if iay0 >= iay1 or iax0 >= iax1:
+        if oy1 >= oy2 or ox1 >= ox2:
             if operation is TBL_AND and b.rest == MODE_O:
                 # If no overlap and rest of connected disk is outer, set all to outer
                 self.data[:, :] = MODE_O
         else:
             # Apply the operation
-            asub = self.data[iay0:iay1, iax0:iax1]          # widok, nie kopia
-            bsub = b   .data[iby0:iby1, ibx0:ibx1]          # ten sam kształt co a
+            asub = self.data[oy1-ay:oy2-ay, ox1-ax:ox2-ax]  # widok, nie kopia
+            bsub = b   .data[oy1-by:oy2-by, ox1-bx:ox2-bx]  # ten sam kształt co a
             np.copyto(asub, operation[asub, bsub])          # zapis in-place
             if operation is TBL_AND and b.rest == MODE_O:
                 # If rest of connected disk is outer, rest of the disk set to outer too
-                self.data[:iay0, :] = MODE_O
-                self.data[iay1:, :] = MODE_O
-                self.data[:, :iax0] = MODE_O
-                self.data[:, iax1:] = MODE_O
+                self.data[:oy1-ay, :] = MODE_O
+                self.data[oy2-ay:, :] = MODE_O
+                self.data[:, :ox1-ax] = MODE_O
+                self.data[:, ox2-ax:] = MODE_O
 
         DiscreteDisk.increment_operation_disk_counter()
 

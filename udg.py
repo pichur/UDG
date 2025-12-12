@@ -29,6 +29,7 @@ class Graph:
     verbose: bool
     limit_points:bool = True
     limit_negative_distances: bool = False
+    optimize_for_yes: bool = False
 
     level: int = 0
     unit: int
@@ -194,8 +195,8 @@ class Graph:
 
     def print_result(self, print_vertex: bool, print_edges: bool, print_work_summary: bool) -> None:
         time = self.stop_time - self.start_time
+        print(f"Time consumed: {(int)(1000*time)} ms")
         if (print_work_summary):
-            print(f"Time consumed: {time} s")
             print(f"Order: {self.order}")
             print(f"Total place_next_vertex calls: {Graph.get_place_next_vertex_counter()}")
             print(f"  lvl:ord  calls")
@@ -411,7 +412,8 @@ class Graph:
         self.unit > 2**self.n
 
     def has_discrete_realization(self):
-        for only_I in [True, False]:
+        range_modes = [True] if self.optimize_for_yes else [True, False]
+        for only_I in range_modes:
             if self.verbose:
                 print(f"  {'Inner' if only_I else 'All'}")
             count_I: int = 0
@@ -588,7 +590,7 @@ class Graph:
                     found_trigraph = True
         
         if not found_trigraph:
-            return NO
+            return TRIGRAPH if self.optimize_for_yes else NO
 
         return TRIGRAPH
     
@@ -969,7 +971,7 @@ def test_coordinates_g5a(verbose=False):
 
 def main() -> None:
     # abcdefghijklmnopqrstuvwxyz
-    # -b---f-hijkl----q-----wxyz
+    # -b---f-hijkl----q-----wx-z
     parser = argparse.ArgumentParser(
         description="Check if a graph is a Unit Disk Graph (UDG).")
     group = parser.add_mutually_exclusive_group(required=True)
@@ -1012,6 +1014,9 @@ def main() -> None:
     parser.add_argument(
         "-n", "--not_limit_points", action="store_true",
         help="Turn off limiting points")
+    parser.add_argument(
+        "-y", "--optimize_for_yes", action="store_true",
+        help="Check only for UDG realization, not for missing trigraphs, stop by limit only")
     parser.add_argument(
         "-m", "--limit_negative_distances", action="store_true",
         help="Turn on limiting negative distances")
@@ -1056,12 +1061,14 @@ def main() -> None:
     if args.limit_negative_distances:
         g.limit_negative_distances = True
 
+    if args.optimize_for_yes:
+        g.optimize_for_yes = True
+
     if check:
         output = g.udg_recognition()
         print("Graph is " + ("" if output else "NOT ") + "a Unit Disk Graph (UDG).")
     
-    if args.print_vertex or args.print_edges or args.print_work_summary:
-        g.print_result(args.print_vertex, args.print_edges, args.print_work_summary)
+    g.print_result(args.print_vertex, args.print_edges, args.print_work_summary)
 
     if args.draw:
         g.draw(args.circle)
