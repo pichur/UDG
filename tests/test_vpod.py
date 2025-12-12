@@ -96,8 +96,8 @@ class TestVertexPairOrbits(unittest.TestCase):
 
         # Check the content of each orbit
         self.assertEqual(orbits[0], ('E', 1, [(0, 1), (2, 3)], (2,  7, True), (0,  8, True)))
-        self.assertEqual(orbits[1], ('n', 2, [(0, 2), (1, 3)], (9, 13, True), (8, 15, True)))
-        self.assertEqual(orbits[2], ('n', 3, [(0, 3)        ], (9, 20, True), (8, 23, True)))
+        self.assertEqual(orbits[1], ('n', 2, [(0, 2), (1, 3)], (9, 13, True), (8, 16, True)))
+        self.assertEqual(orbits[2], ('n', 3, [(0, 3)        ], (9, 20, True), (8, 24, True)))
         self.assertEqual(orbits[3], ('E', 1, [(1, 2)        ], (2,  7, True), (0,  8, True)))
 
     def test_process_graph_p4_u8(self):
@@ -108,8 +108,8 @@ class TestVertexPairOrbits(unittest.TestCase):
 
         # Check the content of each orbit
         self.assertEqual(orbits[0], ('E', 1, [(0, 1), (2, 3)], ( 2, 12, True), ( 0, 13, True)))
-        self.assertEqual(orbits[1], ('n', 2, [(0, 2), (1, 3)], (14, 23, True), (13, 25, True)))
-        self.assertEqual(orbits[2], ('n', 3, [(0, 3)        ], (14, 35, True), (13, 38, True)))
+        self.assertEqual(orbits[1], ('n', 2, [(0, 2), (1, 3)], (14, 23, True), (13, 26, True)))
+        self.assertEqual(orbits[2], ('n', 3, [(0, 3)        ], (14, 35, True), (13, 39, True)))
         self.assertEqual(orbits[3], ('E', 1, [(1, 2)        ], ( 2, 12, True), ( 0, 13, True)))
 
 if __name__ == "__main__":

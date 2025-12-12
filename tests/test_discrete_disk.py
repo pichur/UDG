@@ -17,7 +17,7 @@ class TestDiscreteDisk(unittest.TestCase):
         d = DiscreteDisk.disk(1)
         self.assertEqual(d.x, -1)
         self.assertEqual(d.y, -1)
-        self.assertEqual(d.data.shape, (2, 2))
+        self.assertEqual(d.data.shape, (3, 3))
 
     def test_shift_changes_only_position(self):
         d = DiscreteDisk.disk(1)
@@ -28,126 +28,135 @@ class TestDiscreteDisk(unittest.TestCase):
     def test_content_c1(self):
         d = DiscreteDisk.disk(radius=1, connected=True)
         self.assertDDDEq(d, """
-        ==
-        ==
+        -==
+        ===
+        -=-
         """)
 
-    def test_content_c3(self):
+    def test_content_c2(self):
         d = DiscreteDisk.disk(radius=2, connected=True)
         self.assertDDDEq(d, """
-        ====
-        =++=
-        =++=
-        ====
+        -====
+        -=++=
+        ==++=
+        -====
+        --=--
         """)
 
     def test_content_c3(self):
         d = DiscreteDisk.disk(radius=3, connected=True)
         self.assertDDDEq(d, """
-        ======
-        =++++=
-        =++++=
-        =++++=
-        =++++=
-        ======
+        -======
+        -=++++=
+        -=++++=
+        ==++++=
+        -=++++=
+        -======
+        ---=---
         """)
 
     def test_content_c4(self):
         d = DiscreteDisk.disk(radius=4, connected=True)
         self.assertDDDEq(d, """
-        -======-
-        ==++++==
-        =++++++=
-        =++++++=
-        =++++++=
-        =++++++=
-        ==++++==
-        -======-
+        --======-
+        -==++++==
+        -=++++++=
+        -=++++++=
+        ==++++++=
+        -=++++++=
+        -==++++==
+        --======-
+        ----=----
         """)
 
     def test_content_d4(self):
         d = DiscreteDisk.disk(radius=4, connected=False)
         self.assertDDDEq(d, """
-        +======+
-        ==----==
-        =------=
-        =------=
-        =------=
-        =------=
-        ==----==
-        +======+
+        ++======+
+        +==----==
+        +=------=
+        +=------=
+        ==------=
+        +=------=
+        +==----==
+        ++======+
+        ++++=++++
         """)
 
     def test_content_c5(self):
         d = DiscreteDisk.disk(radius=5, connected=True)
         self.assertDDDEq(d, """
-        --======--
-        -=++++++=-
-        =++++++++=
-        =++++++++=
-        =++++++++=
-        =++++++++=
-        =++++++++=
-        =++++++++=
-        -=++++++=-
-        --======--
+        ---======--
+        --=++++++=-
+        -=++++++++=
+        -=++++++++=
+        -=++++++++=
+        ==++++++++=
+        -=++++++++=
+        -=++++++++=
+        -==++++++=-
+        --=======--
+        -----=-----
         """)
 
     def test_content_c6(self):
         d = DiscreteDisk.disk(radius=6, connected=True)
         self.assertDDDEq(d, """
-        --========--
-        -==++++++==-
-        ==++++++++==
-        =++++++++++=
-        =++++++++++=
-        =++++++++++=
-        =++++++++++=
-        =++++++++++=
-        =++++++++++=
-        ==++++++++==
-        -==++++++==-
-        --========--
+        ---========--
+        --==++++++==-
+        -==++++++++==
+        -=++++++++++=
+        -=++++++++++=
+        -=++++++++++=
+        ==++++++++++=
+        -=++++++++++=
+        -=++++++++++=
+        -==++++++++==
+        --==++++++==-
+        ---========--
+        ------=------
         """)
 
     def test_content_c7(self):
         d = DiscreteDisk.disk(radius=7, connected=True)
         self.assertDDDEq(d, """
-        ---========---
-        --==++++++==--
-        -==++++++++==-
-        ==++++++++++==
-        =++++++++++++=
-        =++++++++++++=
-        =++++++++++++=
-        =++++++++++++=
-        =++++++++++++=
-        =++++++++++++=
-        ==++++++++++==
-        -==++++++++==-
-        --==++++++==--
-        ---========---
+        ----========---
+        ---==++++++==--
+        --==++++++++==-
+        -==++++++++++==
+        -=++++++++++++=
+        -=++++++++++++=
+        -=++++++++++++=
+        ==++++++++++++=
+        -=++++++++++++=
+        -=++++++++++++=
+        -==++++++++++==
+        --==++++++++==-
+        ---==++++++==--
+        ----========---
+        -------=-------
         """)
 
     def test_content_c8(self):
         d = DiscreteDisk.disk(radius=8, connected=True)
         self.assertDDDEq(d, """
-        ----========----
-        --===++++++===--
-        -==++++++++++==-
-        -=++++++++++++=-
-        ==++++++++++++==
-        =++++++++++++++=
-        =++++++++++++++=
-        =++++++++++++++=
-        =++++++++++++++=
-        =++++++++++++++=
-        =++++++++++++++=
-        ==++++++++++++==
-        -=++++++++++++=-
-        -==++++++++++==-
-        --===++++++===--
-        ----========----
+        -----========----
+        ---===++++++===--
+        --==++++++++++==-
+        --=++++++++++++=-
+        -==++++++++++++==
+        -=++++++++++++++=
+        -=++++++++++++++=
+        -=++++++++++++++=
+        ==++++++++++++++=
+        -=++++++++++++++=
+        -=++++++++++++++=
+        -==++++++++++++==
+        --=++++++++++++=-
+        --==++++++++++==-
+        ---===++++++===--
+        -----========----
+        --------=--------
         """)
 
     def test_crop_O(self):
@@ -203,46 +212,49 @@ class TestDiscreteDisk(unittest.TestCase):
     def test_connect_a(self):
         d = DiscreteDisk.disk(4)
         d.connect(4, 2, 0)
-        self.assertEqual(d.data.shape, (8, 8))
+        self.assertEqual(d.data.shape, (9, 9))
         self.assertDDDEq(d, """
-        ---====-
-        --==++==
-        --=++++=
-        --=++++=
-        --=++++=
-        --=++++=
-        --==++==
-        ---====-
+        ----====-
+        ---==++==
+        ---=++++=
+        ---=++++=
+        --==++++=
+        ---=++++=
+        ---==++==
+        ----====-
+        ---------
         """)
 
     def test_connect_b(self):
         d = DiscreteDisk.disk(4)
         d.connect(4, -2, -1)
-        self.assertEqual(d.data.shape, (8, 8))
+        self.assertEqual(d.data.shape, (9, 9))
         self.assertDDDEq(d, """
-        --------
-        =====---
-        =+++==--
-        =++++=--
-        =++++=--
-        =++++=--
-        ==+++=--
-        -=====--
+        ---------
+        -=====---
+        -=+++==--
+        -=++++=--
+        ==++++=--
+        -=++++=--
+        -==+++=--
+        --=====--
+        ----=----
         """)
 
     def test_connect_c(self):
         d = DiscreteDisk.disk(4)
-        d.connect(3, 3, 3)
-        self.assertEqual(d.data.shape, (8, 8))
+        d.connect(4, 3, 3)
+        self.assertEqual(d.data.shape, (9, 9))
         self.assertDDDEq(d, """
-        ----===-
-        ----=+==
-        ----=++=
-        ----====
-        --------
-        --------
-        --------
-        --------
+        ----====-
+        ---==++==
+        ----=+++=
+        ----==++=
+        -----====
+        -------=-
+        ---------
+        ---------
+        ---------
         """)
 
     def test_connect_d(self):
@@ -266,73 +278,78 @@ class TestDiscreteDisk(unittest.TestCase):
     def test_disconnect_a(self):
         d = DiscreteDisk.disk(4)
         d.disconnect(4, 2, 0)
-        self.assertEqual(d.data.shape, (8, 8))
+        self.assertEqual(d.data.shape, (9, 9))
         self.assertDDDEq(d, """
-        -======-
-        ====----
-        =+=-----
-        =+=-----
-        =+=-----
-        =+=-----
-        ====----
-        -======-
+        --======-
+        -====----
+        -=+=-----
+        -=+=-----
+        ====-----
+        -=+=-----
+        -====----
+        --======-
+        ----=----
         """)
 
     def test_disconnect_b(self):
         d = DiscreteDisk.disk(4)
         d.disconnect(4, -2, -1)
-        self.assertEqual(d.data.shape, (8, 8))
+        self.assertEqual(d.data.shape, (9, 9))
         self.assertDDDEq(d, """
-        -======-
-        =====+==
-        ----==+=
-        -----=+=
-        -----=+=
-        -----=+=
-        -----===
-        ----===-
+        --======-
+        -=====+==
+        -----==+=
+        ------=+=
+        ------=+=
+        ------=+=
+        ------===
+        -----===-
+        ----=----
         """)
 
     def test_disconnect_c(self):
         d = DiscreteDisk.disk(4)
         d.disconnect(3, 4, 4)
         self.assertDDDEq(d, """
-        -=====--
-        ==+++=--
-        =++++===
-        =++++++=
-        =++++++=
-        =++++++=
-        ==++++==
-        -======-
+        --=====--
+        -==+++=--
+        -=++++===
+        -=++++++=
+        ==++++++=
+        -=++++++=
+        -==++++==
+        --======-
+        ----=----
         """)
 
     def test_disconnect_d(self):
         d = DiscreteDisk.disk(4)
         d.disconnect(3, 8, 8)
         self.assertDDDEq(d, """
-        -======-
-        ==++++==
-        =++++++=
-        =++++++=
-        =++++++=
-        =++++++=
-        ==++++==
-        -======-
+        --======-
+        -==++++==
+        -=++++++=
+        -=++++++=
+        ==++++++=
+        -=++++++=
+        -==++++==
+        --======-
+        ----=----
         """)
 
     def test_disconnect_out_of_range_a(self):
         d = DiscreteDisk.disk(4)
         d.disconnect(3, 10, -2)
         self.assertDDDEq(d, """
-        -======-
-        ==++++==
-        =++++++=
-        =++++++=
-        =++++++=
-        =++++++=
-        ==++++==
-        -======-
+        --======-
+        -==++++==
+        -=++++++=
+        -=++++++=
+        ==++++++=
+        -=++++++=
+        -==++++==
+        --======-
+        ----=----
         """)
 
     def test_disconnect_out_of_range_b(self):
@@ -347,15 +364,16 @@ class TestDiscreteDisk(unittest.TestCase):
             b = DiscreteDisk.disk(radius = 4, x = -6, y = -1, connected = True))
         self.assertEqual(d.x, -10) 
         self.assertEqual(d.y, - 3)
-        self.assertEqual(d.data.shape, (6, 7))
+        self.assertEqual(d.data.shape, (7, 8))
         self.assertEqual(d.rest, MODE_O)
         self.assertDDDEq(d, """
-        -======
-        ==++++=
-        =+++++=
-        =+++++=
-        =++++==
-        ======-
+        --======
+        -==++++=
+        -=+++++=
+        -=+++++=
+        ==++++==
+        -======-
+        ---=----
         """)
 
     def test_create_area_by_join_CC_out_of_range(self):
@@ -370,17 +388,39 @@ class TestDiscreteDisk(unittest.TestCase):
             b = DiscreteDisk.disk(radius = 4, x = -6, y = -1, connected = False))
         self.assertEqual(d.x, -7 - 4) 
         self.assertEqual(d.y,  1 - 4)
-        self.assertEqual(d.data.shape, (8, 8))
+        self.assertEqual(d.data.shape, (9, 9))
         self.assertEqual(d.rest, MODE_O)
         self.assertDDDEq(d, """
-        -======-
-        ==++++==
-        =+======
-        ===----=
-        ==------
-        ==------
-        ==------
-        -=------
+        --======-
+        -==++++==
+        -=+======
+        -===----=
+        ===------
+        -==------
+        -==------
+        --=------
+        ---------
+        """)
+
+    def test_create_area_by_join_CD_crop(self):
+        discrete_disk.opts.crop = True
+        d = create_area_by_join(
+            a = DiscreteDisk.disk(radius = 4, x = -7, y =  1, connected = True),
+            b = DiscreteDisk.disk(radius = 4, x = -6, y = -1, connected = False))
+        discrete_disk.opts.crop = False
+        self.assertEqual(d.x, -7 - 4) 
+        self.assertEqual(d.y,  1 - 4 + 1)
+        self.assertEqual(d.data.shape, (8, 9))
+        self.assertEqual(d.rest, MODE_O)
+        self.assertDDDEq(d, """
+        --======-
+        -==++++==
+        -=+======
+        -===----=
+        ===------
+        -==------
+        -==------
+        --=------
         """)
 
     def test_create_area_by_join_DC(self):
@@ -389,17 +429,18 @@ class TestDiscreteDisk(unittest.TestCase):
             b = DiscreteDisk.disk(radius = 4, x = -6, y = -1, connected = True))
         self.assertEqual(d.x, -6 - 4)
         self.assertEqual(d.y, -1 - 4)
-        self.assertEqual(d.data.shape, (8, 8))
+        self.assertEqual(d.data.shape, (9, 9))
         self.assertEqual(d.rest, MODE_O)
         self.assertDDDEq(d, """
-        ------=-
-        ------==
-        ------==
-        ------==
-        =----===
-        ======+=
-        ==++++==
-        -======-
+        -------=-
+        -------==
+        -------==
+        -------==
+        ==----===
+        -======+=
+        -===+++==
+        --======-
+        ----=----
         """)
 
     def test_create_area_by_join_DC_crop(self):
@@ -410,16 +451,17 @@ class TestDiscreteDisk(unittest.TestCase):
         discrete_disk.opts.crop = False
         self.assertEqual(d.x, -7 - 4)
         self.assertEqual(d.y, -3 - 4)
-        self.assertEqual(d.data.shape, (7, 8))
+        self.assertEqual(d.data.shape, (8, 9))
         self.assertEqual(d.rest, MODE_O)
         self.assertDDDEq(d, """
-        =------=
-        ==----==
-        ========
-        =++++++=
-        =++++++=
-        ==++++==
-        -======-
+        -=------=
+        -==----==
+        -========
+        ==++=+++=
+        -=++++++=
+        -==++++==
+        --======-
+        ----=----
         """)
 
     def test_create_area_by_join_DD(self):
@@ -428,19 +470,20 @@ class TestDiscreteDisk(unittest.TestCase):
             b = DiscreteDisk.disk(radius = 4, x = -6, y = -1, connected = False))
         self.assertEqual(d.x, -7 - 4)
         self.assertEqual(d.y, -1 - 4)
-        self.assertEqual(d.data.shape, (10, 9))
+        self.assertEqual(d.data.shape, (11, 10))
         self.assertEqual(d.rest, MODE_I)
         self.assertDDDEq(d, """
-        +======++
-        ==----==+
-        =------=+
-        =------==
-        =-------=
-        =-------=
-        ==------=
-        +=------=
-        +==----==
-        ++======+
+        ++======++
+        +==----==+
+        +=------=+
+        +=------==
+        ==-------=
+        +=-------=
+        +==------=
+        ++=------=
+        ++==----==
+        +++======+
+        +++++=++++
         """)
 
     def test_create_area_by_join_DD_out_of_range(self):
@@ -449,27 +492,28 @@ class TestDiscreteDisk(unittest.TestCase):
             b = DiscreteDisk.disk(radius = 4, x =  3, y = -1, connected = False))
         self.assertEqual(d.x, -12)
         self.assertEqual(d.y, - 5)
-        self.assertEqual(d.data.shape, (18, 19))
+        self.assertEqual(d.data.shape, (19, 20))
         self.assertEqual(d.rest, MODE_I)
         self.assertDDDEq(d, """
-        +======++++++++++++
-        ==----==+++++++++++
-        =------=+++++++++++
-        =------=+++++++++++
-        =------=+++++++++++
-        =------=+++++++++++
-        ==----==+++++++++++
-        +======++++++++++++
-        +++++++++++++++++++
-        +++++++++++++++++++
-        ++++++++++++======+
-        +++++++++++==----==
-        +++++++++++=------=
-        +++++++++++=------=
-        +++++++++++=------=
-        +++++++++++=------=
-        +++++++++++==----==
-        ++++++++++++======+
+        ++======++++++++++++
+        +==----==+++++++++++
+        +=------=+++++++++++
+        +=------=+++++++++++
+        ==------=+++++++++++
+        +=------=+++++++++++
+        +==----==+++++++++++
+        ++======++++++++++++
+        ++++=+++++++++++++++
+        ++++++++++++++++++++
+        +++++++++++++======+
+        ++++++++++++==----==
+        ++++++++++++=------=
+        ++++++++++++=------=
+        +++++++++++==------=
+        ++++++++++++=------=
+        ++++++++++++==----==
+        +++++++++++++======+
+        +++++++++++++++=++++
         """)
 
     def test_create_area_by_join_D3C6_0(self):
@@ -478,24 +522,25 @@ class TestDiscreteDisk(unittest.TestCase):
             b = DiscreteDisk.disk(radius = 7, x = 0, y = 0, connected = True ))
         self.assertEqual(d.x, -7)
         self.assertEqual(d.y, -7)
-        self.assertEqual(d.data.shape, (14, 14))
+        self.assertEqual(d.data.shape, (15, 15))
         self.assertEqual(d.rest, MODE_O)
 
         self.assertDDDEq(d, """
-        ---========---
-        --==++++++==--
-        -==++++++++==-
-        ==++======++==
-        =++==----==++=
-        =++=------=++=
-        =++=------=++=
-        =++=------=++=
-        =++=------=++=
-        =++==----==++=
-        ==++======++==
-        -==++++++++==-
-        --==++++++==--
-        ---========---
+        ----========---
+        ---==++++++==--
+        --==++++++++==-
+        -==++======++==
+        -=++==----==++=
+        -=++=------=++=
+        -=++=------=++=
+        ==+==------=++=
+        -=++=------=++=
+        -=++==----==++=
+        -==++======++==
+        --==+++=++++==-
+        ---==++++++==--
+        ----========---
+        -------=-------
         """)
     
     def test_iter_points(self):
@@ -518,14 +563,15 @@ class TestDiscreteDisk(unittest.TestCase):
         self.assertIn   (Coordinate(-1, 1, MODE_I), p)
 
         expected = [
-                                        Coordinate(-2, -3, MODE_B), Coordinate(-1, -3, MODE_B), Coordinate(0, -3, MODE_B), Coordinate(1, -3, MODE_B), Coordinate(2, -3, MODE_B), Coordinate(3, -3, MODE_B),
-            Coordinate(-3, -2, MODE_B), Coordinate(-2, -2, MODE_B), Coordinate(-1, -2, MODE_I), Coordinate(0, -2, MODE_I), Coordinate(1, -2, MODE_I), Coordinate(2, -2, MODE_I), Coordinate(3, -2, MODE_B), Coordinate(4, -2, MODE_B),
-            Coordinate(-3, -1, MODE_B), Coordinate(-2, -1, MODE_I), Coordinate(-1, -1, MODE_I), Coordinate(0, -1, MODE_I), Coordinate(1, -1, MODE_I), Coordinate(2, -1, MODE_I), Coordinate(3, -1, MODE_I), Coordinate(4, -1, MODE_B),
-            Coordinate(-3,  0, MODE_B), Coordinate(-2,  0, MODE_I), Coordinate(-1,  0, MODE_I), Coordinate(0,  0, MODE_I), Coordinate(1,  0, MODE_I), Coordinate(2,  0, MODE_I), Coordinate(3,  0, MODE_I), Coordinate(4,  0, MODE_B),
-            Coordinate(-3,  1, MODE_B), Coordinate(-2,  1, MODE_I), Coordinate(-1,  1, MODE_I), Coordinate(0,  1, MODE_I), Coordinate(1,  1, MODE_I), Coordinate(2,  1, MODE_I), Coordinate(3,  1, MODE_I), Coordinate(4,  1, MODE_B),
-            Coordinate(-3,  2, MODE_B), Coordinate(-2,  2, MODE_I), Coordinate(-1,  2, MODE_I), Coordinate(0,  2, MODE_I), Coordinate(1,  2, MODE_I), Coordinate(2,  2, MODE_I), Coordinate(3,  2, MODE_I), Coordinate(4,  2, MODE_B),
-            Coordinate(-3,  3, MODE_B), Coordinate(-2,  3, MODE_B), Coordinate(-1,  3, MODE_I), Coordinate(0,  3, MODE_I), Coordinate(1,  3, MODE_I), Coordinate(2,  3, MODE_I), Coordinate(3,  3, MODE_B), Coordinate(4,  3, MODE_B),
-                                        Coordinate(-2,  4, MODE_B), Coordinate(-1,  4, MODE_B), Coordinate(0,  4, MODE_B), Coordinate(1,  4, MODE_B), Coordinate(2,  4, MODE_B), Coordinate(3,  4, MODE_B)
+                                                                                                                            Coordinate(0, -4, MODE_B),
+                                                                    Coordinate(-2, -3, MODE_B), Coordinate(-1, -3, MODE_B), Coordinate(0, -3, MODE_B), Coordinate(1, -3, MODE_B), Coordinate(2, -3, MODE_B), Coordinate(3, -3, MODE_B),
+                                        Coordinate(-3, -2, MODE_B), Coordinate(-2, -2, MODE_B), Coordinate(-1, -2, MODE_I), Coordinate(0, -2, MODE_I), Coordinate(1, -2, MODE_I), Coordinate(2, -2, MODE_I), Coordinate(3, -2, MODE_B), Coordinate(4, -2, MODE_B),
+                                        Coordinate(-3, -1, MODE_B), Coordinate(-2, -1, MODE_I), Coordinate(-1, -1, MODE_I), Coordinate(0, -1, MODE_I), Coordinate(1, -1, MODE_I), Coordinate(2, -1, MODE_I), Coordinate(3, -1, MODE_I), Coordinate(4, -1, MODE_B),
+            Coordinate(-4,  0, MODE_B), Coordinate(-3,  0, MODE_B), Coordinate(-2,  0, MODE_I), Coordinate(-1,  0, MODE_I), Coordinate(0,  0, MODE_I), Coordinate(1,  0, MODE_I), Coordinate(2,  0, MODE_I), Coordinate(3,  0, MODE_I), Coordinate(4,  0, MODE_B),
+                                        Coordinate(-3,  1, MODE_B), Coordinate(-2,  1, MODE_I), Coordinate(-1,  1, MODE_I), Coordinate(0,  1, MODE_I), Coordinate(1,  1, MODE_I), Coordinate(2,  1, MODE_I), Coordinate(3,  1, MODE_I), Coordinate(4,  1, MODE_B),
+                                        Coordinate(-3,  2, MODE_B), Coordinate(-2,  2, MODE_I), Coordinate(-1,  2, MODE_I), Coordinate(0,  2, MODE_I), Coordinate(1,  2, MODE_I), Coordinate(2,  2, MODE_I), Coordinate(3,  2, MODE_I), Coordinate(4,  2, MODE_B),
+                                        Coordinate(-3,  3, MODE_B), Coordinate(-2,  3, MODE_B), Coordinate(-1,  3, MODE_I), Coordinate(0,  3, MODE_I), Coordinate(1,  3, MODE_I), Coordinate(2,  3, MODE_I), Coordinate(3,  3, MODE_B), Coordinate(4,  3, MODE_B),
+                                                                    Coordinate(-2,  4, MODE_B), Coordinate(-1,  4, MODE_B), Coordinate(0,  4, MODE_B), Coordinate(1,  4, MODE_B), Coordinate(2,  4, MODE_B), Coordinate(3,  4, MODE_B)
         ]
         self.assertEqual(d.points_list(), expected)
 

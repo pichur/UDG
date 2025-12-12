@@ -84,28 +84,41 @@ D_CALC()
 
 def symmetric_set(M: np.ndarray, i: int, j: int, radius: int, symbol: np.uint8) -> None:
     """Ustawia symetryczne komórki w macierzy M."""
-    M[radius + i - 1, radius + j - 1] = symbol
-    M[radius + i - 1, radius - j    ] = symbol
-    M[radius - i    , radius + j - 1] = symbol
-    M[radius - i    , radius - j    ] = symbol
-    M[radius + j - 1, radius + i - 1] = symbol
-    M[radius + j - 1, radius - i    ] = symbol
-    M[radius - j    , radius + i - 1] = symbol
-    M[radius - j    , radius - i    ] = symbol
+    M[radius + i    , radius + j    ] = symbol
+    M[radius + i    , radius - j + 1] = symbol
+    M[radius - i + 1, radius + j    ] = symbol
+    M[radius - i + 1, radius - j + 1] = symbol
+    M[radius + j    , radius + i    ] = symbol
+    M[radius + j    , radius - i + 1] = symbol
+    M[radius - j + 1, radius + i    ] = symbol
+    M[radius - j + 1, radius - i + 1] = symbol
 
 def _get_from_disk_cache(radius: int, connected: bool) -> np.ndarray:
     if radius not in _disk_cache:
+        size = 2 * radius + 1
         # C = Connected, D = Disconnected
-        C = np.full((2 * radius, 2 * radius), MODE_O, dtype=np.uint8)
-        D = np.full((2 * radius, 2 * radius), MODE_I, dtype=np.uint8)
+        C = np.full((size, size), MODE_O, dtype=np.uint8)
+        D = np.full((size, size), MODE_I, dtype=np.uint8)
         for ix in range(1, radius + 1):
             for iy in range(ix, radius + 1):
                 if DS[idx(ix, iy)] <= RES[radius]:
                     symmetric_set(C, ix, iy, radius, MODE_I)
                     symmetric_set(D, ix, iy, radius, MODE_O)
-                elif DS[idx(ix-1, iy-1)] < RES[radius]:
-                    symmetric_set(C, ix, iy, radius, MODE_B)
-                    symmetric_set(D, ix, iy, radius, MODE_B)
+                else: # DS[idx(ix, iy)] > RES[radius]
+                    if DS[idx(ix-1, iy-1)] < RES[radius]:
+                        symmetric_set(C, ix, iy, radius, MODE_B)
+                        symmetric_set(D, ix, iy, radius, MODE_B)
+                    elif DS[idx(ix-1, iy-1)] == RES[radius]: # Not symmetric case caused by range (a,b> closed at Top Right
+                        C[radius - ix + 1, radius - iy + 1] = MODE_B
+                        C[radius - iy + 1, radius - ix + 1] = MODE_B
+                        D[radius - ix + 1, radius - iy + 1] = MODE_B
+                        D[radius - iy + 1, radius - ix + 1] = MODE_B
+        # Not symmetric case caused by range (a,b> closed at Top Right, out of basic range
+        C[0, radius] = MODE_B
+        C[radius, 0] = MODE_B
+        D[0, radius] = MODE_B
+        D[radius, 0] = MODE_B
+
         C.setflags(write=False)
         D.setflags(write=False)
         _disk_cache[radius] = (C, D)
@@ -166,7 +179,7 @@ class DiscreteDisk:
         values = self.data[ys, xs]
         x0, y0 = self.x, self.y
         for iy, ix, val in zip(ys, xs, values):
-            yield Coordinate(x0 + ix + 1, y0 + iy + 1, val)
+            yield Coordinate(x0 + ix, y0 + iy, val)
 
     def points_IB_iter(self):
         self.points_iter('I')

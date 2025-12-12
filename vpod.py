@@ -139,7 +139,7 @@ def process_graph(graph_input:str, g6:bool=True, unit:int=4, order:str="DD", ign
             msg = udg.get_node_distances_info(False, chars)
             u, v = nodes
             edge_indicator = '-' if orbit_type == 'E' else ' '
-            default_range_b = (0 if distance == 1 else unit - 1, distance * unit + 1)
+            default_range_b = (0 if distance == 1 else unit, distance * unit)
             short_range_b = None if range_b is None else (range_b[0], range_b[1])
             not_default_range_b = short_range_b != default_range_b
             not_continueous_range_i = range_i is not None and not range_i[2]
@@ -188,13 +188,13 @@ def main() -> None:
         help="Print output")
     parser.add_argument(
         "-c", "--chars", default="█▒ ",
-        help="Default chararcters for print ranges")
+        help="Default characters for print ranges")
     parser.add_argument(
         "-i", "--ignore", action="store_true",
         help="Ignore ranges check")
     parser.add_argument(
         "-u", "--unit", type=int,
-        help="Start unit")
+        help="Working unit")
     parser.add_argument(
         "-a", "--order", type=str, default="DD",
         help="Order mode")
