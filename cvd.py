@@ -52,7 +52,7 @@ def main() -> None:
         elif args.edge_list:
             g = Graph(Graph6Converter.edge_list_to_graph(graph_input))
 
-        g.set_verbose(args.verbose)
+        g.set_log_level(args.verbose)
 
         if args.unit:
             g.set_unit(args.unit)

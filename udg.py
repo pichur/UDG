@@ -6,6 +6,7 @@ from typing import ClassVar
 import networkx as nx
 import argparse
 import time
+import random
 import Graph6Converter
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,6 +18,13 @@ from dataclasses import dataclass
 TRIGRAPH = "TRIGRAPH"
 YES = "YES"
 NO = "NO"
+# Log levels, 0 OFF, 1 BASIC, increasing levels of verbosity, negative for special modes, -1 for work order
+LOG_OFF   = 0
+LOG_BASIC = 1
+LOG_INFO  = 2
+LOG_DEBUG = 3
+LOG_TRACE = 4
+LOG_WORK_ORDER = -1
 
 @dataclass(slots=True)
 class IterationInfo:
@@ -26,10 +34,12 @@ class IterationInfo:
 class Graph:
     """Simple adjacency list graph that can be built from an integer number
     of vertices or from a :class:`networkx.Graph` instance."""
-    verbose: bool
+    log_level: int # 0 OFF, 1 BASIC, increasing levels of verbosity, negative for special modes, -1 for work order
+    print_progress: int = 0
     limit_points:bool = True
     limit_negative_distances: bool = False
     optimize_for_yes: bool = False
+    forbid_same_positions: bool = False
 
     level: int = 0
     unit: int
@@ -37,12 +47,14 @@ class Graph:
     adj: list[list[int]]
 
     order_mode: str = 'DD'
+    point_iteration_order: str = 'none'
+
     order: list[int]
     coordinates: list[Coordinate]
 
     previous_area: list[list[DiscreteDisk]]
 
-    iteretions: list[IterationInfo]
+    iterations: list[IterationInfo]
 
     check_distance = False
     check_distance_iteration = 0
@@ -51,6 +63,8 @@ class Graph:
     collect_work_summary: bool = False
     place_next_vertex_counter: ClassVar[int] = 0
     place_next_vertex_by_level_and_order_counter: list[list[int]] = []
+
+    stop_time = False
     
     @classmethod
     def get_place_next_vertex_counter(cls) -> int:
@@ -78,7 +92,7 @@ class Graph:
         else:
             raise TypeError("Graph() expects an int or a networkx.Graph")
         
-        self.verbose = False
+        self.log_level = LOG_BASIC
 
         # store vertex coordinates and additional parameters
         self.coordinates = [
@@ -86,7 +100,7 @@ class Graph:
             for _ in range(self.n)
         ]
 
-        self.iteretions = [
+        self.iterations = [
             IterationInfo(0, 0)
             for _ in range(self.n)
         ]
@@ -124,14 +138,19 @@ class Graph:
     def is_edge(self, u: int, v: int):
         return v in self.adj[u]
     
-    def set_verbose(self, verbose):
+    def set_log_level(self, log_level):
         """Set verbosity for debugging purposes."""
-        self.verbose = verbose
+        self.log_level = log_level
         return self
     
     def set_collect_work_summary(self, collect_work_summary: bool):
         """Set whether to collect work summary statistics."""
         self.collect_work_summary = collect_work_summary
+        return self
+
+    def set_print_progress(self, print_progress: int):
+        """Set the interval in seconds for printing progress information."""
+        self.print_progress = print_progress
         return self
 
     def set_coordinate(self, v: int, x: int, y: int, mode: np.uint8 = MODE_U):
@@ -146,11 +165,11 @@ class Graph:
             row[order_index:] = fill
 
     def set_iteration_len(self, v: int, len: int):
-        c = self.iteretions[v].point_size = len
+        c = self.iterations[v].point_size = len
         return self
 
     def set_iteration_index(self, v: int, index: int):
-        c = self.iteretions[v].point_iter = index
+        c = self.iterations[v].point_iter = index
         return self
 
     def set_unit(self, unit: int):
@@ -194,8 +213,9 @@ class Graph:
                         self.vertex_edge_distance[i][j] = self.vertex_edge_distance[i][k] + self.vertex_edge_distance[k][j]
 
     def print_result(self, print_vertex: bool, print_edges: bool, print_work_summary: bool) -> None:
-        time = self.stop_time - self.start_time
-        print(f"Time consumed: {(int)(1000*time)} ms")
+        if self.stop_time:
+            time = self.stop_time - self.start_time
+            print(f"Time consumed: {(int)(1000*time)} ms")
         if (print_work_summary):
             print(f"Order: {self.order}")
             print(f"Total place_next_vertex calls: {Graph.get_place_next_vertex_counter()}")
@@ -348,16 +368,17 @@ class Graph:
     def udg_recognition(self):
         self.start_time = time.time()
         self.last_verbose_time = self.start_time
+        self.last_progress_time = self.start_time
 
         if not self.is_connected():
             self.stop_time = time.time()
-            if self.verbose:
+            if self.log_level >= LOG_BASIC:
                 print("Graph is not connected, cannot be a UDG.")
             return False
 
         if self.is_full():
             self.stop_time = time.time()
-            if self.verbose:
+            if self.log_level >= LOG_BASIC:
                 print("Graph is full, it is a UDG.")
             return True
         
@@ -365,7 +386,7 @@ class Graph:
 
         self.level = 0
         while True:
-            if self.verbose:
+            if self.log_level >= LOG_BASIC:
                 print(f"Checking unit: {self.unit}")
             result = self.has_discrete_realization()
             if result == YES:
@@ -376,7 +397,7 @@ class Graph:
                 return False
             if self.is_limit_achieved():
                 self.stop_time = time.time()
-                if self.verbose:
+                if self.log_level >= LOG_BASIC:
                     print("Reached max unit = {self.unit}, no realization found.")
                 return False
 
@@ -414,7 +435,7 @@ class Graph:
     def has_discrete_realization(self):
         range_modes = [True] if self.optimize_for_yes else [True, False]
         for only_I in range_modes:
-            if self.verbose:
+            if self.log_level >= LOG_INFO:
                 print(f"  {'Inner' if only_I else 'All'}")
             count_I: int = 0
             count_B: int = 0
@@ -434,7 +455,7 @@ class Graph:
 
     def calculate_node_distances(self, nodes: tuple[int, int], order: str = "DD") -> list[int]:
         u, v = nodes
-        if self.verbose:
+        if self.log_level >= LOG_INFO:
             print(f"Calculating node distances for: {u}, {v}")
 
         maximum_vertex_edge_distance = self.get_maximum_vertex_edge_distance()
@@ -476,7 +497,7 @@ class Graph:
         return self.node_distances
 
     def store_vertex_distances(self, mode: np.uint8 = MODE_U):
-        if self.verbose:
+        if self.log_level >= LOG_DEBUG:
             msg = ""
             for i in range(self.n):
                 coord = self.coordinates[i]
@@ -522,7 +543,7 @@ class Graph:
                 P = self.candidate_points(j, only_I, count_I, count_B)
                 num_candidates = len(P)
                 
-                if self.verbose:
+                if self.log_level > LOG_TRACE:
                     print(f"  check order {j}={v} : {num_candidates}")
 
                 # Check if this is the best option so far
@@ -539,14 +560,19 @@ class Graph:
 
         vertex = self.order[j]
 
-        if self.verbose:
+        if self.log_level >= LOG_TRACE:
             print(f"order[{j}]={vertex} : {len(P)} points")
 
         found_trigraph = False
-        if self.verbose:
+
+        if self.print_progress > 0:
             self.set_iteration_len(vertex, len(P))
-        point_iter = -1
+        
+        iter_p = -1
         for p in P:
+            iter_p += 1
+            self.set_iteration_index(vertex, iter_p)
+
             incr_I = 1 if p.mode == MODE_I else 0
             incr_B = 1 if p.mode == MODE_B else 0
 
@@ -556,13 +582,13 @@ class Graph:
             if self.collect_work_summary:
                 self.mark_place_next_vertex_process(j)
             
-            if self.verbose:
-                print(f"vertex = {self.order[j]} already_placed = {j} coordinates = {self.print_coordinates(j)}")
-                point_iter += 1
-                self.set_iteration_index(vertex, point_iter)
+            if (self.print_progress > 0) and (time.time() - self.last_progress_time > self.print_progress):
+                self.last_progress_time = time.time()
                 if time.time() - self.last_verbose_time > 10:
                     self.last_verbose_time = time.time()
                     print("  placing " + self.state_info(only_I, j))
+            if (self.log_level >= LOG_DEBUG) or (self.log_level == LOG_WORK_ORDER):
+                print(f"vertex = {self.order[j]} already_placed = {j} coordinates = {self.print_coordinates(j)}")
             if j < self.n - 1:
                 result = self.place_next_vertex(j + 1, calc_D, only_I, count_I + incr_I, count_B + incr_B)
                 if result == YES:
@@ -597,15 +623,15 @@ class Graph:
     def print_coordinates(self, placed: int) -> str:
         """Format coordinates in the requested format: [( 0, 0),(+7,-2),(-3,+5),(+3,+4),(+4, 0),(-1,+4),  None ]"""
         coords = []
-        for i in range(self.n): coords.append("   None")
+        for i in range(self.n): coords.append("     None")
         for i in range(placed + 1):
             vertex = self.order[i]
             coord = self.coordinates[vertex]
             x = coord.x
             y = coord.y
-            # Format with proper signs
-            x_str = f"{x:+d}" if x != 0 else " 0"
-            y_str = f"{y:+d}" if y != 0 else " 0"
+            # Format with proper signs and 2-digit width
+            x_str = f"{x:+3d}" if x != 0 else "  0"
+            y_str = f"{y:+3d}" if y != 0 else "  0"
             coords[vertex] = f"({x_str},{y_str})"
         
         return "[" + ",".join(coords) + " ]"
@@ -615,16 +641,58 @@ class Graph:
         for i in range(j+1):
             k = self.order[i]
             c = self.coordinates[k]
-            w = self.iteretions[k]
-            x = c.x / self.unit
-            y = c.y / self.unit
-            info += f"  [{w.point_iter+1:4d}/{w.point_size:4d}] {k} {MODES[c.mode]} ({x: =6.3f}:{y: =6.3f})"
+            s = self.iterations[k].point_size
+            i = self.iterations[k].point_iter+1
+            x = c.x
+            y = c.y
+            info += f"  [{i:4d}/{s:4d}] {k} {MODES[c.mode]} ({x: =3d}:{y: =3d})"
         return info
     
     def is_udg_realization(self) -> bool:
         return all(coord.mode == MODE_I for coord in self.coordinates)
     
     def candidate_points(self, j: int, only_I: bool, count_I: int, count_B: int) -> list[Coordinate]:
+        P = self.candidate_points_without_order(j, only_I, count_I, count_B)
+
+        if self.point_iteration_order == 'ascending':
+            P.sort(key=lambda point: (point.y, point.x))
+        elif self.point_iteration_order == 'descending':
+            P.sort(key=lambda point: (-point.y, -point.x))
+        elif self.point_iteration_order == 'spiral':
+            P.sort(key=lambda point: (point.x * point.x + point.y * point.y, point.y, point.x))
+        elif self.point_iteration_order == 'reverse_spiral':
+            P.sort(key=lambda point: (-(point.x * point.x + point.y * point.y), -point.y, -point.x))
+        elif self.point_iteration_order == 'zigzag':
+            P.sort(key=lambda point: (point.y + point.x, point.y - point.x))
+        elif self.point_iteration_order == 'reverse_zigzag':
+            P.sort(key=lambda point: (-(point.y + point.x), -(point.y - point.x)))
+        elif self.point_iteration_order == 'bisection':
+            P.sort(key=lambda point: (abs(point.x - point.y), point.y, point.x))
+        elif self.point_iteration_order == 'random':
+            random.shuffle(P)
+        # else: keep original order
+
+        if self.forbid_same_positions:
+            P = self.remoove_used_coordinates(j, P)
+
+        return P
+
+    def remoove_used_coordinates(self, j, P):      
+        unique_P = []
+        placed_positions = set()
+        for i in range(j):
+            vertex = self.order[i]
+            coord = self.coordinates[vertex]
+            placed_positions.add((coord.x, coord.y))
+        
+        for point in P:
+            pos = (point.x, point.y)
+            if pos not in placed_positions:
+                unique_P.append(point)
+
+        return unique_P
+    
+    def candidate_points_without_order(self, j: int, only_I: bool, count_I: int, count_B: int) -> list[Coordinate]:
         if j == 0:
             P = []
             P.append(Coordinate(x = 0, y = 0, mode = MODE_I))
@@ -695,10 +763,10 @@ class Graph:
             self.calculate_order_degree_level(desc = False)
         elif self.order_mode.startswith('DD'):
             self.calculate_order_degree_level(desc = True)
-        elif self.order_mode.startswith('O:'):
+        elif self.order_mode[0].isdigit():
             self.order = [-1] * self.n
             # Custom order provided as a suffix
-            order_str = self.order_mode[2:]
+            order_str = self.order_mode
             order_str_list = order_str.split(',')
             order_int_list = []
             for x in order_str_list:
@@ -733,7 +801,7 @@ class Graph:
             if len(self.order) >= 2:
                 self.order = list(self.order[:2]) + [-1] * (len(self.order) - 2)
         
-        if self.verbose:
+        if self.log_level >= LOG_INFO:
             print(f"Using order mode: {self.order_mode}")
             print(f"Work order: {self.order}")
     
@@ -826,11 +894,11 @@ class Graph:
 
         self.order = order
 
-def tests(verbose=False):
+def tests(log_level=LOG_BASIC):
     # Example usage
     print("Test C3")
     g = Graph(3)
-    g.set_verbose(verbose)
+    g.set_log_level(log_level)
     g.add_edge(0,1)
     g.add_edge(1,2)
     g.add_edge(2,0)
@@ -838,7 +906,7 @@ def tests(verbose=False):
 
     print("Test P4")
     g = Graph(4)
-    g.set_verbose(verbose)
+    g.set_log_level(log_level)
     g.add_edge(0,1)
     g.add_edge(1,2)
     g.add_edge(2,3)
@@ -846,7 +914,7 @@ def tests(verbose=False):
     
     print("Test G5")
     g = Graph(7)
-    g.set_verbose(verbose)
+    g.set_log_level(log_level)
     g.add_edge(0,1)
     g.add_edge(0,3)
     g.add_edge(1,2)
@@ -860,7 +928,7 @@ def tests(verbose=False):
 
     print("Test K2,3")
     g = Graph(5)
-    g.set_verbose(verbose)
+    g.set_log_level(log_level)
     g.add_edge(0,1)
     g.add_edge(0,2)
     g.add_edge(0,3)
@@ -869,9 +937,9 @@ def tests(verbose=False):
     g.add_edge(3,4)
     print("Graph K2,3 is non UDG:", g.udg_recognition())
 
-def test_coordinates_g4(verbose=False):
+def test_coordinates_g4(log_level=LOG_BASIC):
     g = Graph(7)
-    g.set_verbose(verbose)
+    g.set_log_level(log_level)
     g.set_coordinate(0,      0,      0)
     g.set_coordinate(1,  56568,      0)
     g.set_coordinate(2, -14142,  14142)
@@ -890,7 +958,7 @@ def test_coordinates_g4(verbose=False):
     g.set_unit(70000)
     return g
 
-def test_coordinates_g4a(verbose=False):
+def test_coordinates_g4a(log_level=LOG_BASIC):
     a = 30
     b = 5
     sin_ap = sin((a+b) * pi / 180)
@@ -900,7 +968,7 @@ def test_coordinates_g4a(verbose=False):
     u = 30000
     e = 1.05
     g = Graph(7)
-    g.set_verbose(verbose)
+    g.set_log_level(log_level)
     g.set_coordinate(0,                0,                0    )
     g.set_coordinate(1, - sin_ap     * u, - cos_ap     * u    )
     g.set_coordinate(2,                0, -              u * e)
@@ -919,9 +987,9 @@ def test_coordinates_g4a(verbose=False):
     g.set_unit(u)
     return g
 
-def test_coordinates_g5(verbose=False):
+def test_coordinates_g5(log_level=LOG_BASIC):
     g = Graph(7)
-    g.set_verbose(verbose)
+    g.set_log_level(log_level)
     g.set_coordinate(0,     0,     0)
     g.set_coordinate(1, 28284,     0)
     g.set_coordinate(2, 28284, 14142)
@@ -941,7 +1009,7 @@ def test_coordinates_g5(verbose=False):
     g.set_unit(30000)
     return g
 
-def test_coordinates_g5a(verbose=False):
+def test_coordinates_g5a(log_level=LOG_BASIC):
     a = 30
     sin_a = sin(a * pi / 180)
     cos_a = cos(a * pi / 180)
@@ -949,7 +1017,7 @@ def test_coordinates_g5a(verbose=False):
     e = 0.578
     f = 1.154
     g = Graph(7)
-    g.set_verbose(verbose)
+    g.set_log_level(log_level)
     g.set_coordinate(0,               0,               0)
     g.set_coordinate(1,               0,           e * u)
     g.set_coordinate(2,   cos_a * e * u, - sin_a * e * u)
@@ -969,17 +1037,46 @@ def test_coordinates_g5a(verbose=False):
     g.set_unit(u)
     return g
 
+def test_coordinates_g8(log_level=LOG_BASIC):
+    g = Graph(8)
+    g.set_log_level(log_level)
+    g.set_coordinate(0, 14142,   7071)
+    g.set_coordinate(1, 49497,      0)
+    g.set_coordinate(2, 14142, -28284)
+    g.set_coordinate(3,     0,      0)
+    g.set_coordinate(4, 28284,  21213)
+    g.set_coordinate(5, 28284, -21213)
+    g.set_coordinate(6, 35355, -14142)
+    g.set_coordinate(7,  7071,      0)
+    g.add_edge(0,3)
+    g.add_edge(0,4)
+    g.add_edge(0,6)
+    g.add_edge(0,7)
+    g.add_edge(1,4)
+    g.add_edge(1,5)
+    g.add_edge(1,6)
+    g.add_edge(2,5)
+    g.add_edge(2,6)
+    g.add_edge(2,7)
+    g.add_edge(3,7)
+    g.add_edge(4,7)
+    g.add_edge(5,6)
+    g.add_edge(5,7)
+    g.set_unit(30000)
+    return g
+
 def main() -> None:
     # abcdefghijklmnopqrstuvwxyz
-    # -b---f-hijkl----q-----wx-z
+    # ab-d-f-hij------qr----wx-z
     parser = argparse.ArgumentParser(
         description="Check if a graph is a Unit Disk Graph (UDG).")
+    # main
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
         "-t", "--tests", action="store_true",
         help="Run example tests")
     group.add_argument(
-        "-o", "--coordinates", action="store_true",
+        "-c", "--coordinates", action="store_true",
         help="Check graph with coordinates")
     group.add_argument(
         "-g", "--graph6", action="store_true",
@@ -988,57 +1085,58 @@ def main() -> None:
         "-e", "--edge_list", action="store_true",
         help="Check graph given as edge list")
     parser.add_argument(
-        "-p", "--print_vertex", action="store_true",
-        help="Print coordinates for each vertex")
-    parser.add_argument(
-        "-r", "--print_edges", action="store_true",
-        help="Print distances for each edge")
-    parser.add_argument(
-        "-s", "--print_work_summary", action="store_true",
-        help="Print a summary of work done")
-    parser.add_argument(
-        "-d", "--draw", action="store_true",
-        help="Draw the graph using stored coordinates")
-    parser.add_argument(
-        "-c", "--circle", action="store_true",
-        help="Draw unit disks when drawing the graph")
-    parser.add_argument(
-        "-v", "--verbose", action="store_true",
-        help="Enable verbose output for debugging")
+        "graph", metavar="GRAPH", nargs="?", default="",
+        help="Input graph description")
     parser.add_argument(
         "-u", "--unit", type=int,
         help="Start unit")
     parser.add_argument(
-        "-a", "--order", type=str, default="DD",
-        help="Order mode (F:forced nodes (given in parameter); P:path; DA:degree ascending; DD:degree descending; O:v1,...,vn:custom order; other:same order)")
+        "-o", "--order", type=str, default="DD",
+        help="Order mode (F:forced nodes (given in parameter); P:path; DA:degree ascending; DD:degree descending; v1,...,vn:custom order - starting from digit; other:same order); default DD")
+    # settings
     parser.add_argument(
         "-n", "--not_limit_points", action="store_true",
         help="Turn off limiting points")
     parser.add_argument(
+        "-m", "--limit_negative_distances", action="store_true",
+        help="Limit negative distances")
+    parser.add_argument(
         "-y", "--optimize_for_yes", action="store_true",
         help="Check only for UDG realization, not for missing trigraphs, stop by limit only")
     parser.add_argument(
-        "-m", "--limit_negative_distances", action="store_true",
-        help="Turn on limiting negative distances")
+        "-k", "--point_iteration_order", type=str, default="none",
+        help="Point iteration order: none (default), ascending, descending, random")
     parser.add_argument(
-        "graph", metavar="GRAPH", nargs="?", default="",
-        help="Input graph description")
+        "-s", "--forbid_same_positions", action="store_true",
+        help="Forbid same positions for different vertices")
+    # output
+    parser.add_argument(
+        "-v", "--verbose", type=str, default="",
+        help="Verbose modes, can contains: e - edge list; c - vertex coordinates; w - work summary; d - draw graph; u - draw unit disks")
+    parser.add_argument(
+        "-p", "--print_progress", type=int, default=0,
+        help="Print progress information every n seconds, 0 to turn off")
+    parser.add_argument(
+        "-l", "--log_level", type=int, default=1,
+        help="Log level, 0 OFF, 1 BASIC, 2 INFO, 3 DEBUG, 4 TRACE, negative for special modes, -1 for work order; default BASIC")
 
     args = parser.parse_args()
 
     check = False
     if args.tests:
-        tests(args.verbose)
+        tests(args.log_level)
         return
     elif args.coordinates:
         if args.graph == 'g4':
-            g = test_coordinates_g4(args.verbose)
+            g = test_coordinates_g4(args.log_level)
         elif args.graph == 'g4a':
-            g = test_coordinates_g4a(args.verbose)
+            g = test_coordinates_g4a(args.log_level)
         elif args.graph == 'g5':
-            g = test_coordinates_g5(args.verbose)
+            g = test_coordinates_g5(args.log_level)
         elif args.graph == 'g5a':
-            g = test_coordinates_g5a(args.verbose)
+            g = test_coordinates_g5a(args.log_level)
+        elif args.graph == 'g8':
+            g = test_coordinates_g8(args.log_level)
     elif args.graph6:
         g = Graph(Graph6Converter.g6_to_graph(args.graph))
         check = True
@@ -1046,32 +1144,37 @@ def main() -> None:
         g = Graph(Graph6Converter.edge_list_to_graph(args.graph))
         check = True
 
-    g.set_verbose(args.verbose)
-    g.set_collect_work_summary(args.print_work_summary)
+    # Parse verbose modes from the verbose string
+    print_edges              = 'e' in args.verbose
+    print_vertex_coordinates = 'c' in args.verbose  
+    print_work_summary       = 'w' in args.verbose
+    draw_graph               = 'd' in args.verbose
+    draw_unit_circle         = 'u' in args.verbose
+
+    g.set_collect_work_summary(print_work_summary)
+
+    g.set_log_level     (args.log_level     )
+    g.set_print_progress(args.print_progress)
 
     if args.unit:
         g.set_unit(args.unit)
 
-    if args.order:
-        g.order_mode = args.order
-        
-    if args.not_limit_points:
-        g.limit_points = False
+    if args.order                : g.order_mode            = args.order
+    if args.point_iteration_order: g.point_iteration_order = args.point_iteration_order
 
-    if args.limit_negative_distances:
-        g.limit_negative_distances = True
-
-    if args.optimize_for_yes:
-        g.optimize_for_yes = True
+    if args.not_limit_points        : g.limit_points             = False
+    if args.limit_negative_distances: g.limit_negative_distances = True
+    if args.optimize_for_yes        : g.optimize_for_yes         = True
+    if args.forbid_same_positions   : g.forbid_same_positions    = True
 
     if check:
         output = g.udg_recognition()
         print("Graph is " + ("" if output else "NOT ") + "a Unit Disk Graph (UDG).")
     
-    g.print_result(args.print_vertex, args.print_edges, args.print_work_summary)
+    g.print_result(print_vertex_coordinates, print_edges, print_work_summary)
 
-    if args.draw:
-        g.draw(args.circle)
+    if draw_graph:
+        g.draw(draw_unit_circle)
         import matplotlib.pyplot as plt
         plt.show()
         return

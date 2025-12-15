@@ -104,22 +104,28 @@ class TestUDG(unittest.TestCase):
         self.assertEqual('DD', g.order_mode)
         self.assertEqual([0,1,2,3,4], g.order)
 
-    def test_apply_order_da(self):
-        g = self._udg_graph('5: 1,2 1,3 1,4 1,5 2,3')
+    def test_apply_order_da_1(self):
+        g = self._udg_graph('5: 0,1 0,2 0,3 0,4 1,2')
         g.apply_order('DA')
         self.assertEqual('DA', g.order_mode)
         self.assertEqual([3,0,4,1,2], g.order)
 
+    def test_apply_order_da_2(self):
+        g = self._udg_graph('8: 0,3 0,4 0,6 0,7 1,4 1,5 1,6 2,5 2,6 2,7 3,7 4,7 5,6 5,7')
+        g.apply_order('DA')
+        self.assertEqual('DA', g.order_mode)
+        self.assertEqual([3,0,7,2,4,5,6,1], g.order)
+
     def test_apply_order_custom_o(self):
         g = self._udg_graph('5: 1,2 1,3 1,4 1,5 2,3')
-        g.apply_order('O:4,3,2,1,0')
-        self.assertEqual('O:4,3,2,1,0', g.order_mode)
+        g.apply_order('4,3,2,1,0')
+        self.assertEqual('4,3,2,1,0', g.order_mode)
         self.assertEqual([4,3,2,1,0], g.order)
 
     def test_apply_order_custom_o_partial(self):
         g = self._udg_graph('5: 1,2 1,3 1,4 1,5 2,3')
-        g.apply_order('O:2,4')
-        self.assertEqual('O:2,4', g.order_mode)
+        g.apply_order('2,4')
+        self.assertEqual('2,4', g.order_mode)
         self.assertEqual([2,4,-1,-1,-1], g.order)
 
     def test_apply_order_force_nodes_a(self):

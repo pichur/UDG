@@ -109,7 +109,7 @@ def process_graph(graph_input:str, g6:bool=True, unit:int=4, order:str="DD", ign
         return 
 
     udg.last_verbose_time = time.time()
-    udg.set_verbose(verbose)
+    udg.set_log_level(verbose)
 
     udg.limit_negative_distances = limit_negative_distances
 

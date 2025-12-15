@@ -18,6 +18,10 @@ INFO  = 1 # include info level msgs
 DEBUG = 2 # include info and debug level msgs
 HIGH  = 3 # highest debug verbosity
 LOG_LEVEL = NONE ## select intended log level
+# progress?
+DISPLAY_PROGRESS = False
+# work order
+DISPLAY_WORK_ORDER = False
 
 ## progress
 PROGRESS_STEP = 1000 # number of attempted configurations
@@ -47,9 +51,6 @@ place_next_vertex_counter: int = 0
 place_next_vertex_by_level_and_order_counter: list[list[int]] = []
 
 ######################################
-
-# progress?
-DISPLAY_PROGRESS = False
 
 ## placement options
 SECOND_VERTEX_ZERO_ORDINATE = True
@@ -800,6 +801,27 @@ def display_progress(progress, vertex_count, recursive_level, already_placed):
 def initialize_progress():
     return [0]
 
+def display_work_order(graph, already_placed, coordinates):
+    if DISPLAY_WORK_ORDER:
+        n = graph[NUMBER_OF_VERTICES]
+        placement_order = graph[PLACEMENT_ORDER]
+        
+        msg = f"vertex = {placement_order[already_placed]} already_placed = {already_placed} coordinates = "
+        
+        formatted_coords = "["
+        for i in range(1, len(coordinates)):
+            if coordinates[i] is None:
+                formatted_coords += "     None,"
+            else:
+                # Normalize to unit coordinates
+                x_norm = int(coordinates[i][0] / GRID_SPACEMENT if GRID_SPACEMENT > 0 else coordinates[i][0])
+                y_norm = int(coordinates[i][1] / GRID_SPACEMENT if GRID_SPACEMENT > 0 else coordinates[i][1])
+                x_str = f"{x_norm:+3d}" if x_norm != 0 else "  0"
+                y_str = f"{y_norm:+3d}" if y_norm != 0 else "  0"
+                formatted_coords += f"({x_str},{y_str}),"
+        
+        formatted_coords = formatted_coords[:-1] + " ]"
+        print(msg + formatted_coords)
 # ---------------------------------------------------------
 
 def determine_possible_locations(graph, already_placed, coordinates, radius, model=set()): 
@@ -819,6 +841,8 @@ def determine_possible_locations(graph, already_placed, coordinates, radius, mod
     debug("already_placed = " + spillguts(already_placed))
     debug("coordinates = " + spillguts(coordinates))
     debug("model = " + spillguts(model))
+
+    display_work_order(graph, already_placed, coordinates)
 
     allowed_points = set()
     forbidden_points = set()
@@ -1159,8 +1183,8 @@ def main() -> None:
         "-l", "--max_levels", type=int, default=3,
         help="Max levels deep (type 1 for no granularity refinement at all), default 3)")
     parser.add_argument(
-        "-s", "--print_work_summary", action="store_true",
-        help="Print a summary of work done")
+        "-s", "--display_mode", type=str,
+        help="Print special info, can be WORK_SUMMARY, WORK_ORDER")
     parser.add_argument(
         "graph", metavar="GRAPH", nargs="?", default="",
         help="Input graph description")
@@ -1169,6 +1193,12 @@ def main() -> None:
 
     global DISPLAY_PROGRESS
     DISPLAY_PROGRESS = args.verbose
+
+    global collect_work_summary
+    collect_work_summary = args.display_mode and 'WORK_SUMMARY' in args.display_mode
+
+    global DISPLAY_WORK_ORDER
+    DISPLAY_WORK_ORDER = args.display_mode and 'WORK_ORDER' in args.display_mode
 
     global LOG_LEVEL
     if args.log_level >= NONE and args.log_level <= HIGH:
@@ -1228,10 +1258,6 @@ def main() -> None:
         debug("edges = " + spillguts(G[NEIGHBORS]))
 
         set_placement_order(G, args.order)
-
-        if args.print_work_summary:
-            global collect_work_summary
-            collect_work_summary = True
 
         if False:  # interactive mode
             read_ordered_groups(G)
@@ -1319,7 +1345,7 @@ def main() -> None:
         elapsed_time = get_elapsed_time()
         result_msg += "\n(Took " + format_time(elapsed_time, True) + ".)"
 
-        if args.print_work_summary:
+        if collect_work_summary:
             print(f"Placement order: {G[PLACEMENT_ORDER]}")
             print(f"Total place_next_vertex calls: {place_next_vertex_counter}")
             print(f"  lvl:ord  calls")
