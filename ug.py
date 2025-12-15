@@ -80,6 +80,20 @@ class GraphUtil:
             self.vertex_mapping = vertex_mapping
 
     @classmethod
+    def contains_induced_subgraph(cls, graph:nx.Graph, subgraph:nx.Graph) -> bool:
+        """
+        Check if the graph contains the given subgraph as an induced subgraph.
+        
+        Args:
+            graph    (nx.Graph): The main graph
+            subgraph (nx.Graph): The subgraph to check for
+        Returns:
+            bool: True if subgraph is an induced subgraph of graph, False otherwise
+        """
+        gm = nx.algorithms.isomorphism.GraphMatcher(graph, subgraph)
+        return gm.subgraph_is_isomorphic()
+
+    @classmethod
     def reduce(cls, graph: nx.Graph) -> ReduceInfo:
         """
         Reduce graph by merging nodes with identical neighborhoods.
