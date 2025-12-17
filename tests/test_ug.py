@@ -216,6 +216,23 @@ class TestGraphUtil(unittest.TestCase):
         
         self.assertTrue(GraphUtil.contains_induced_subgraph(graphK33, graphK23))
 
+    def test_K23_not_in_K33_plus(self):
+        graph_K23 = nx.Graph()
+        graph_K23.add_edges_from([
+            (0, 2), (0, 3), (0, 4),
+            (1, 2), (1, 3), (1, 4)  
+        ])
+        
+        graph_K33_plus = nx.Graph()
+        graph_K33_plus.add_edges_from([
+            (0, 1), (0, 3), (0, 5),
+            (2, 1), (2, 3), (2, 5),
+            (4, 1), (4, 3), (4, 5),
+            (1, 3), (3, 5), (0, 4)
+        ])
+        
+        self.assertFalse(GraphUtil.contains_induced_subgraph(graph_K33_plus, graph_K23))
+
     def test_star_5_6_7(self):
         graphS5 = nx.Graph()
         graphS5.add_edges_from([(0, 1), (0, 2), (0, 3), (0, 4), (0, 5)])

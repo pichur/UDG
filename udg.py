@@ -11,6 +11,8 @@ import Graph6Converter
 import numpy as np
 import matplotlib.pyplot as plt
 import discrete_disk
+from ug import GraphUtil
+import test_graphs
 from discrete_disk import create_area_by_join, DiscreteDisk, Coordinate, MODES, MODE_U, MODE_I, MODE_B, MODE_O, DISK_NONE
 from dataclasses import dataclass
 
@@ -43,6 +45,7 @@ class Graph:
 
     level: int = 0
     unit: int
+    max_unit: int = 0
     n: int
     adj: list[list[int]]
 
@@ -429,8 +432,18 @@ class Graph:
         return True
 
     def is_limit_achieved(self):
+        if self.max_unit > 0:
+            if self.unit > self.max_unit:
+                if self.log_level >= LOG_BASIC:
+                    print(f"Reached maximum unit limit: {self.max_unit}")
+                return True
         # temp
-        self.unit > 2**self.n
+        if self.unit > 2**self.n:
+            if self.log_level >= LOG_BASIC:
+                print(f"Reached theoretical unit limit: {2**self.n}")
+            return True
+        
+        return False
 
     def has_discrete_realization(self):
         range_modes = [True] if self.optimize_for_yes else [True, False]
@@ -894,180 +907,14 @@ class Graph:
 
         self.order = order
 
-def tests(log_level=LOG_BASIC):
-    # Example usage
-    print("Test C3")
-    g = Graph(3)
-    g.set_log_level(log_level)
-    g.add_edge(0,1)
-    g.add_edge(1,2)
-    g.add_edge(2,0)
-    print("Graph C3 is UDG:", g.udg_recognition())
-
-    print("Test P4")
-    g = Graph(4)
-    g.set_log_level(log_level)
-    g.add_edge(0,1)
-    g.add_edge(1,2)
-    g.add_edge(2,3)
-    print("Graph P4 is UDG:", g.udg_recognition())
-    
-    print("Test G5")
-    g = Graph(7)
-    g.set_log_level(log_level)
-    g.add_edge(0,1)
-    g.add_edge(0,3)
-    g.add_edge(1,2)
-    g.add_edge(1,4)
-    g.add_edge(2,3)
-    g.add_edge(2,5)
-    g.add_edge(3,6)
-    g.add_edge(4,5)
-    g.add_edge(5,6)
-    print("Graph G5 is non UDG:", g.udg_recognition())
-
-    print("Test K2,3")
-    g = Graph(5)
-    g.set_log_level(log_level)
-    g.add_edge(0,1)
-    g.add_edge(0,2)
-    g.add_edge(0,3)
-    g.add_edge(1,4)
-    g.add_edge(2,4)
-    g.add_edge(3,4)
-    print("Graph K2,3 is non UDG:", g.udg_recognition())
-
-def test_coordinates_g4(log_level=LOG_BASIC):
-    g = Graph(7)
-    g.set_log_level(log_level)
-    g.set_coordinate(0,      0,      0)
-    g.set_coordinate(1,  56568,      0)
-    g.set_coordinate(2, -14142,  14142)
-    g.set_coordinate(3,  35355,  63639)
-    g.set_coordinate(4,  56568, -63639)
-    g.set_coordinate(5, -63639, -35355)
-    g.set_coordinate(6, - 7071, -70710)
-    g.add_edge(0,1)
-    g.add_edge(0,2)
-    g.add_edge(1,3)
-    g.add_edge(1,4)
-    g.add_edge(2,3)
-    g.add_edge(2,5)
-    g.add_edge(4,6)
-    g.add_edge(5,6)
-    g.set_unit(70000)
-    return g
-
-def test_coordinates_g4a(log_level=LOG_BASIC):
-    a = 30
-    b = 5
-    sin_ap = sin((a+b) * pi / 180)
-    cos_ap = cos((a+b) * pi / 180)
-    sin_am = sin((a-b) * pi / 180)
-    cos_am = cos((a-b) * pi / 180)
-    u = 30000
-    e = 1.05
-    g = Graph(7)
-    g.set_log_level(log_level)
-    g.set_coordinate(0,                0,                0    )
-    g.set_coordinate(1, - sin_ap     * u, - cos_ap     * u    )
-    g.set_coordinate(2,                0, -              u * e)
-    g.set_coordinate(3,   sin_ap     * u, - cos_ap     * u    )
-    g.set_coordinate(4, - sin_am * 2 * u, - cos_am * 2 * u / e)
-    g.set_coordinate(5,                0, -          2 * u * e)
-    g.set_coordinate(6,   sin_am * 2 * u, - cos_am * 2 * u / e)
-    g.add_edge(0,1)
-    g.add_edge(0,3)
-    g.add_edge(1,2)
-    g.add_edge(1,4)
-    g.add_edge(2,3)
-    g.add_edge(3,6)
-    g.add_edge(4,5)
-    g.add_edge(5,6)
-    g.set_unit(u)
-    return g
-
-def test_coordinates_g5(log_level=LOG_BASIC):
-    g = Graph(7)
-    g.set_log_level(log_level)
-    g.set_coordinate(0,     0,     0)
-    g.set_coordinate(1, 28284,     0)
-    g.set_coordinate(2, 28284, 14142)
-    g.set_coordinate(3,  7071, 28284)
-    g.set_coordinate(4, 56568,     0)
-    g.set_coordinate(5, 49497, 28284)
-    g.set_coordinate(6, 28284, 49497)
-    g.add_edge(0,1)
-    g.add_edge(0,3)
-    g.add_edge(1,2)
-    g.add_edge(1,4)
-    g.add_edge(2,3)
-    g.add_edge(2,5)
-    g.add_edge(3,6)
-    g.add_edge(4,5)
-    g.add_edge(5,6)
-    g.set_unit(30000)
-    return g
-
-def test_coordinates_g5a(log_level=LOG_BASIC):
-    a = 30
-    sin_a = sin(a * pi / 180)
-    cos_a = cos(a * pi / 180)
-    u = 30000
-    e = 0.578
-    f = 1.154
-    g = Graph(7)
-    g.set_log_level(log_level)
-    g.set_coordinate(0,               0,               0)
-    g.set_coordinate(1,               0,           e * u)
-    g.set_coordinate(2,   cos_a * e * u, - sin_a * e * u)
-    g.set_coordinate(3, - cos_a * e * u, - sin_a * e * u)
-    g.set_coordinate(4,   cos_a * f * u,   sin_a * f * u)
-    g.set_coordinate(5,               0, -         f * u)
-    g.set_coordinate(6, - cos_a * f * u,   sin_a * f * u)
-    g.add_edge(0,1) 
-    g.add_edge(0,2)
-    g.add_edge(0,3)
-    g.add_edge(1,4)
-    g.add_edge(2,4)
-    g.add_edge(2,5)
-    g.add_edge(3,5)
-    g.add_edge(3,6)
-    g.add_edge(1,6)
-    g.set_unit(u)
-    return g
-
-def test_coordinates_g8(log_level=LOG_BASIC):
-    g = Graph(8)
-    g.set_log_level(log_level)
-    g.set_coordinate(0, 14142,   7071)
-    g.set_coordinate(1, 49497,      0)
-    g.set_coordinate(2, 14142, -28284)
-    g.set_coordinate(3,     0,      0)
-    g.set_coordinate(4, 28284,  21213)
-    g.set_coordinate(5, 28284, -21213)
-    g.set_coordinate(6, 35355, -14142)
-    g.set_coordinate(7,  7071,      0)
-    g.add_edge(0,3)
-    g.add_edge(0,4)
-    g.add_edge(0,6)
-    g.add_edge(0,7)
-    g.add_edge(1,4)
-    g.add_edge(1,5)
-    g.add_edge(1,6)
-    g.add_edge(2,5)
-    g.add_edge(2,6)
-    g.add_edge(2,7)
-    g.add_edge(3,7)
-    g.add_edge(4,7)
-    g.add_edge(5,6)
-    g.add_edge(5,7)
-    g.set_unit(30000)
-    return g
+def write_out(output_file, msg_info):
+    if output_file:
+        with open(output_file, 'a') as out_file:
+            out_file.write(msg_info)
 
 def main() -> None:
     # abcdefghijklmnopqrstuvwxyz
-    # ab-d-f-hij------qr----wx-z
+    # -b-d----ij------qr-------z
     parser = argparse.ArgumentParser(
         description="Check if a graph is a Unit Disk Graph (UDG).")
     # main
@@ -1085,11 +932,17 @@ def main() -> None:
         "-e", "--edge_list", action="store_true",
         help="Check graph given as edge list")
     parser.add_argument(
-        "graph", metavar="GRAPH", nargs="?", default="",
-        help="Input graph description")
+        "-f", "--file", action="store_true",
+        help="Read graphs from file (one graph6 per line)")
     parser.add_argument(
-        "-u", "--unit", type=int,
+        "graph", metavar="GRAPH", nargs="?", default="",
+        help="Input graph description (multiple graphs can be separated by ;) or file if -f is used)")
+    parser.add_argument(
+        "-u", "--unit", type=int, default=4,
         help="Start unit")
+    parser.add_argument(
+        "-x", "--max_unit", type=int, default=0,
+        help="Maximum unit, 0 for real max limit")
     parser.add_argument(
         "-o", "--order", type=str, default="DD",
         help="Order mode (F:forced nodes (given in parameter); P:path; DA:degree ascending; DD:degree descending; v1,...,vn:custom order - starting from digit; other:same order); default DD")
@@ -1109,6 +962,10 @@ def main() -> None:
     parser.add_argument(
         "-s", "--forbid_same_positions", action="store_true",
         help="Forbid same positions for different vertices")
+    # processing
+    parser.add_argument(
+        "-a", "--preprocess", type=str, default="",
+        help="Preprocess steps, can contains: r - reduce; s - check for known non-udg subgraphs")
     # output
     parser.add_argument(
         "-v", "--verbose", type=str, default="",
@@ -1119,30 +976,24 @@ def main() -> None:
     parser.add_argument(
         "-l", "--log_level", type=int, default=1,
         help="Log level, 0 OFF, 1 BASIC, 2 INFO, 3 DEBUG, 4 TRACE, negative for special modes, -1 for work order; default BASIC")
+    parser.add_argument(
+        "-w", "--output_file", type=str,
+        help="Write output to file")
 
     args = parser.parse_args()
 
     check = False
     if args.tests:
-        tests(args.log_level)
+        test_graphs.tests(args.log_level)
         return
-    elif args.coordinates:
-        if args.graph == 'g4':
-            g = test_coordinates_g4(args.log_level)
-        elif args.graph == 'g4a':
-            g = test_coordinates_g4a(args.log_level)
-        elif args.graph == 'g5':
-            g = test_coordinates_g5(args.log_level)
-        elif args.graph == 'g5a':
-            g = test_coordinates_g5a(args.log_level)
-        elif args.graph == 'g8':
-            g = test_coordinates_g8(args.log_level)
-    elif args.graph6:
-        g = Graph(Graph6Converter.g6_to_graph(args.graph))
-        check = True
-    elif args.edge_list:
-        g = Graph(Graph6Converter.edge_list_to_graph(args.graph))
-        check = True
+    
+    graph_K23 = nx.Graph()
+    graph_K23.add_edges_from([
+        (0, 2), (0, 3), (0, 4),
+        (1, 2), (1, 3), (1, 4)  
+    ])
+    graph_S6 = nx.Graph()
+    graph_S6.add_edges_from([(0, 1), (0, 2), (0, 3), (0, 4), (0, 5), (0, 6)])
 
     # Parse verbose modes from the verbose string
     print_edges              = 'e' in args.verbose
@@ -1151,33 +1002,97 @@ def main() -> None:
     draw_graph               = 'd' in args.verbose
     draw_unit_circle         = 'u' in args.verbose
 
-    g.set_collect_work_summary(print_work_summary)
+    # Parse preprocess steps from the preprocess string
+    preprocess_reduce_graph             = 'r' in args.preprocess
+    preprocess_check_non_udg_subgraphs  = 's' in args.preprocess
 
-    g.set_log_level     (args.log_level     )
-    g.set_print_progress(args.print_progress)
+    if args.file:
+        with open(args.graph, 'r') as f:
+            graphs_input = [line.strip() for line in f if line.strip()]
+    else:
+        # Split input by semicolons for multiple graphs
+        if ';' in args.graph:
+            graphs_input = [g.strip() for g in args.graph.split(';') if g.strip()]
+        else:
+            graphs_input = [args.graph] if args.graph else []
 
-    if args.unit:
-        g.set_unit(args.unit)
-
-    if args.order                : g.order_mode            = args.order
-    if args.point_iteration_order: g.point_iteration_order = args.point_iteration_order
-
-    if args.not_limit_points        : g.limit_points             = False
-    if args.limit_negative_distances: g.limit_negative_distances = True
-    if args.optimize_for_yes        : g.optimize_for_yes         = True
-    if args.forbid_same_positions   : g.forbid_same_positions    = True
-
-    if check:
-        output = g.udg_recognition()
-        print("Graph is " + ("" if output else "NOT ") + "a Unit Disk Graph (UDG).")
-    
-    g.print_result(print_vertex_coordinates, print_edges, print_work_summary)
-
-    if draw_graph:
-        g.draw(draw_unit_circle)
-        import matplotlib.pyplot as plt
-        plt.show()
+    if not graphs_input:
+        print("No graph provided")
         return
+
+    for i, graph_input in enumerate(graphs_input):
+        if args.coordinates:
+            g = test_graphs.get_test_graph_by_name(graph_input, args.log_level)
+        elif args.graph6:
+            nx_g = Graph6Converter.g6_to_graph(graph_input)
+            g = Graph(nx_g)
+            check = True
+        elif args.edge_list:
+            nx_g = Graph6Converter.edge_list_to_graph(graph_input)
+            g = Graph(nx_g)
+            check = True
+
+        g.set_collect_work_summary(print_work_summary)
+
+        g.set_log_level     (args.log_level     )
+        g.set_print_progress(args.print_progress)
+
+        if args.unit:
+            g.set_unit(args.unit)
+
+        g.max_unit = args.max_unit
+
+        if args.order                : g.order_mode            = args.order
+        if args.point_iteration_order: g.point_iteration_order = args.point_iteration_order
+
+        if args.not_limit_points        : g.limit_points             = False
+        if args.limit_negative_distances: g.limit_negative_distances = True
+        if args.optimize_for_yes        : g.optimize_for_yes         = True
+        if args.forbid_same_positions   : g.forbid_same_positions    = True
+
+        msg_info = f"Graph ({(i+1):4d}/{len(graphs_input):4d} {graph_input}:"
+        write_out(args.output_file, msg_info)
+        stop_check = False
+        if check:
+            if preprocess_reduce_graph:
+                reduction_info = GraphUtil.reduce(nx_g)
+                if reduction_info.reduced_nodes > 0:
+                    stop_check = True
+                    msg_break = f" reduced to graph {reduction_info.output_canonical_g6}; reduced nodes {reduction_info.reduced_nodes}"
+            elif preprocess_check_non_udg_subgraphs:
+                if GraphUtil.contains_induced_subgraph(nx_g, graph_K23):
+                    stop_check = True
+                    msg_break += " contains K2,3 induced subgraph"
+                elif GraphUtil.contains_induced_subgraph(nx_g, graph_S6):
+                    stop_check = True
+                    msg_break += " contains S6 induced subgraph"
+            
+            if stop_check:
+                write_out(args.output_file, msg_break + '\n')
+                msg_info += msg_break
+            else:
+                start_time = time.time()
+                udg_check_result = g.udg_recognition()
+                end_time = time.time()
+                elapsed_time = end_time - start_time
+                msg_stop = "   UDG  " if udg_check_result else " non udg"
+                msg_stop += f" time = {int(1000*elapsed_time):9d} ms unit = {g.unit:2d}"
+                write_out(args.output_file, msg_stop + '\n')
+                msg_info += msg_stop
+
+            print(msg_info)
+
+            if args.output_file:
+                with open(args.output_file, 'a') as out_file:
+                    out_file.write(msg_info + '\n')
+        
+            g.print_result(print_vertex_coordinates, print_edges, print_work_summary)
+
+        if draw_graph:
+            g.draw(draw_unit_circle)
+            import matplotlib.pyplot as plt
+            plt.show()
+            return
 
 if __name__ == "__main__":
     main()
