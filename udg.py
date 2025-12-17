@@ -1,6 +1,6 @@
 """Simple Unit Disk Graph recognition algorithm."""
 
-from math import sqrt, sin, cos, pi
+from math import sqrt
 from collections import deque
 from typing import ClassVar
 import networkx as nx
@@ -12,7 +12,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import discrete_disk
 from ug import GraphUtil
-import test_graphs
 from discrete_disk import create_area_by_join, DiscreteDisk, Coordinate, MODES, MODE_U, MODE_I, MODE_B, MODE_O, DISK_NONE
 from dataclasses import dataclass
 
@@ -913,6 +912,7 @@ def write_out(output_file, msg_info):
             out_file.write(msg_info)
 
 def main() -> None:
+    import graph_examples
     # abcdefghijklmnopqrstuvwxyz
     # -b-d----ij------qr-------z
     parser = argparse.ArgumentParser(
@@ -984,7 +984,7 @@ def main() -> None:
 
     check = False
     if args.tests:
-        test_graphs.tests(args.log_level)
+        graph_examples.tests(args.log_level)
         return
     
     graph_K23 = nx.Graph()
@@ -1022,7 +1022,7 @@ def main() -> None:
 
     for i, graph_input in enumerate(graphs_input):
         if args.coordinates:
-            g = test_graphs.get_test_graph_by_name(graph_input, args.log_level)
+            g = graph_examples.get_test_graph_by_name(graph_input, args.log_level)
         elif args.graph6:
             nx_g = Graph6Converter.g6_to_graph(graph_input)
             g = Graph(nx_g)

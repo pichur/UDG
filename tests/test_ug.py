@@ -1,4 +1,3 @@
-from asyncio import graph
 import unittest
 import networkx as nx
 from ug import GraphUtil
