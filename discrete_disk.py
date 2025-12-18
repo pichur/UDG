@@ -286,7 +286,7 @@ class DiscreteDisk:
         h, w = self.data.shape
         if x < 0 or x >= w or y < 0 or y >= h:
             return MODE_O
-        return self.data(y, x)
+        return self.data[y, x]
     
     def get_absolute(self, x: int, y: int) -> np.uint8:
         h, w = self.data.shape
@@ -294,7 +294,7 @@ class DiscreteDisk:
         y_relative = y - self.y
         if x_relative < 0 or x_relative >= w or y_relative < 0 or y_relative >= h:
             return MODE_O
-        return self.data(y, x)
+        return self.data[y, x]
 
     def show(self, symbol_map: np.ndarray = np.array(['◦', '▒', '█'])) -> str:
         """Return an ASCII representation of the matrix or :class:`DiscreteDisk`."""
