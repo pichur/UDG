@@ -13,6 +13,7 @@ from typing import ClassVar, Iterator
 # Boundary mode is removed entirely (user request).
 
 N = 2**10
+
 DSQRT2 = 2 * np.sqrt(2)
 
 _disk_cache: dict[int, tuple[np.ndarray, np.ndarray]] = {}
