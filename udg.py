@@ -63,24 +63,11 @@ class Graph:
     node_distances: list[int] = []
 
     collect_work_summary: bool = False
-    place_next_vertex_counter: ClassVar[int] = 0
+    place_next_vertex_counter: int = 0
     place_next_vertex_by_level_and_order_counter: list[list[int]] = []
 
     stop_time = False
     
-    @classmethod
-    def get_place_next_vertex_counter(cls) -> int:
-        return cls.place_next_vertex_counter
-
-    @classmethod
-    def increment_place_next_vertex_counter(cls) -> int:
-        cls.place_next_vertex_counter += 1
-        return cls.place_next_vertex_counter
-
-    @classmethod
-    def reset_place_next_vertex_counter(cls) -> None:
-        cls.place_next_vertex_counter = 0
-
     def __init__(self, n_or_g):
         if isinstance(n_or_g, int):
             self.n = n_or_g
@@ -145,6 +132,12 @@ class Graph:
         self.log_level = log_level
         return self
     
+    def get_place_next_vertex_counter(self) -> int:
+        return self.place_next_vertex_counter
+
+    def reset_place_next_vertex_counter(self) -> None:
+        self.place_next_vertex_counter = 0
+
     def set_collect_work_summary(self, collect_work_summary: bool):
         """Set whether to collect work summary statistics."""
         self.collect_work_summary = collect_work_summary
@@ -217,10 +210,11 @@ class Graph:
     def print_result(self, print_vertex: bool, print_edges: bool, print_work_summary: bool) -> None:
         if self.stop_time:
             time = self.stop_time - self.start_time
-            print(f"Time consumed: {(int)(1000*time)} ms")
+            if self.log_level >= LOG_BASIC:
+                print(f"Time consumed: {(int)(1000*time)} ms")
         if (print_work_summary):
             print(f"Order: {self.order}")
-            print(f"Total place_next_vertex calls: {Graph.get_place_next_vertex_counter()}")
+            print(f"Total place_next_vertex calls: {self.get_place_next_vertex_counter()}")
             print(f"  lvl:ord  calls")
             for level, counters in enumerate(self.place_next_vertex_by_level_and_order_counter):
                 for order, count in enumerate(counters):
@@ -528,45 +522,46 @@ class Graph:
                     self.vertex_distances[i][j][distanceC] = mode
     
     def mark_place_next_vertex_process(self, order_index: int):
-        Graph.increment_place_next_vertex_counter()
         while len(self.place_next_vertex_by_level_and_order_counter) <= self.level:
             self.place_next_vertex_by_level_and_order_counter.append([])
         while len(self.place_next_vertex_by_level_and_order_counter[self.level]) <= order_index:
             self.place_next_vertex_by_level_and_order_counter[self.level].append(0)
         self.place_next_vertex_by_level_and_order_counter[self.level][order_index] += 1
 
+    def minimize_coordinates(self, j: int, only_I: bool, count_I: int, count_B: int) -> list[Coordinate]:
+        # Find the unplaced vertex with the smallest number of candidate points
+        min_candidates = float('inf')
+        best_vertex = None
+        best_P = None
+
+        for v in range(self.n):
+            # Skip vertices that are already placed in order
+            if v in self.order[:j]:
+                continue
+            
+            # Temporarily set this vertex as the next one to get candidate points
+            self.order[j] = v
+            
+            # Get candidate points for this vertex
+            P = self.candidate_points(j, only_I, count_I, count_B)
+            num_candidates = len(P)
+            
+            if self.log_level > LOG_TRACE:
+                print(f"  check order {j}={v} : {num_candidates}")
+
+            # Check if this is the best option so far
+            if num_candidates < min_candidates:
+                min_candidates = num_candidates
+                best_vertex = v
+                best_P = P
+
+        # Set the best vertex at position j and use its candidate points
+        self.order[j] = best_vertex
+        P = best_P
 
     def place_next_vertex(self, j: int, calc_D: bool, only_I: bool, count_I: int, count_B: int):
         if self.order[j] == -1:
-            # Find the unplaced vertex with the smallest number of candidate points
-            min_candidates = float('inf')
-            best_vertex = None
-            best_P = None
-
-            for v in range(self.n):
-                # Skip vertices that are already placed in order
-                if v in self.order[:j]:
-                    continue
-                
-                # Temporarily set this vertex as the next one to get candidate points
-                self.order[j] = v
-                
-                # Get candidate points for this vertex
-                P = self.candidate_points(j, only_I, count_I, count_B)
-                num_candidates = len(P)
-                
-                if self.log_level > LOG_TRACE:
-                    print(f"  check order {j}={v} : {num_candidates}")
-
-                # Check if this is the best option so far
-                if num_candidates < min_candidates:
-                    min_candidates = num_candidates
-                    best_vertex = v
-                    best_P = P
-
-            # Set the best vertex at position j and use its candidate points
-            self.order[j] = best_vertex
-            P = best_P
+            P = self.minimize_coordinates(j, only_I, count_I, count_B)
         else:
             P = self.candidate_points(j, only_I, count_I, count_B)
 
@@ -591,6 +586,7 @@ class Graph:
             self.set_coordinate(vertex, p.x, p.y, p.mode)
             self.clear_previous_area(j)
 
+            self.place_next_vertex_counter += 1
             if self.collect_work_summary:
                 self.mark_place_next_vertex_process(j)
             
@@ -610,6 +606,9 @@ class Graph:
                         return TRIGRAPH
                     if not calc_D:
                         found_trigraph=True
+                if not only_I and (result == NO):
+                    # TODO print(f"XXX {self.unit} {j} forbidden at {self.state_info(only_I, j)}")
+                    pass
             else:
                 # if self.is_udg_realization():
                 if count_I + incr_I == self.n:
@@ -632,10 +631,12 @@ class Graph:
 
         return TRIGRAPH
     
-    def print_coordinates(self, placed: int) -> str:
-        """Format coordinates in the requested format: [( 0, 0),(+7,-2),(-3,+5),(+3,+4),(+4, 0),(-1,+4),  None ]"""
+    def print_coordinates(self, placed: int = -1) -> str:
+        """Format coordinates in the requested format: [( 0, 0),(+7,-2),(-3,+5),(+3,+4),(+4, 0),(-1,+4),  None]"""
         coords = []
         for i in range(self.n): coords.append("     None")
+        if placed == -1:
+            placed = self.n - 1
         for i in range(placed + 1):
             vertex = self.order[i]
             coord = self.coordinates[vertex]
@@ -646,7 +647,7 @@ class Graph:
             y_str = f"{y:+3d}" if y != 0 else "  0"
             coords[vertex] = f"({x_str},{y_str})"
         
-        return "[" + ",".join(coords) + " ]"
+        return "[" + ",".join(coords) + "]"
     
     def state_info(self, only_I: bool, j:int) -> str:
         info = f" {'I' if only_I else 'A'}"
@@ -685,11 +686,11 @@ class Graph:
         # else: keep original order
 
         if self.forbid_same_positions:
-            P = self.remoove_used_coordinates(j, P)
+            P = self.remove_used_coordinates(j, P)
 
         return P
 
-    def remoove_used_coordinates(self, j, P):      
+    def remove_used_coordinates(self, j, P):      
         unique_P = []
         placed_positions = set()
         for i in range(j):
@@ -945,7 +946,13 @@ def main() -> None:
         help="Maximum unit, 0 for real max limit")
     parser.add_argument(
         "-o", "--order", type=str, default="DD",
-        help="Order mode (F:forced nodes (given in parameter); P:path; DA:degree ascending; DD:degree descending; v1,...,vn:custom order - starting from digit; other:same order); default DD")
+        help="Order mode (F:forced nodes (given in parameter);" \
+                         "P:path;" \
+                         "DA:degree ascending;" \
+                         "DD:degree descending;" \
+                         "v1,...,vn:custom order - starting from digit;" \
+                         "ALL - iterate over all permutations;" \
+                         "other:same order); default DD")
     # settings
     parser.add_argument(
         "-n", "--not_limit_points", action="store_true",
@@ -1020,7 +1027,8 @@ def main() -> None:
         print("No graph provided")
         return
 
-    for i, graph_input in enumerate(graphs_input):
+    for gi_i, graph_input in enumerate(graphs_input):
+        nx_g = None
         if args.coordinates:
             g = graph_examples.get_test_graph_by_name(graph_input, args.log_level)
         elif args.graph6:
@@ -1032,67 +1040,86 @@ def main() -> None:
             g = Graph(nx_g)
             check = True
 
-        g.set_collect_work_summary(print_work_summary)
-
-        g.set_log_level     (args.log_level     )
-        g.set_print_progress(args.print_progress)
-
-        if args.unit:
-            g.set_unit(args.unit)
-
-        g.max_unit = args.max_unit
-
-        if args.order                : g.order_mode            = args.order
-        if args.point_iteration_order: g.point_iteration_order = args.point_iteration_order
-
-        if args.not_limit_points        : g.limit_points             = False
-        if args.limit_negative_distances: g.limit_negative_distances = True
-        if args.optimize_for_yes        : g.optimize_for_yes         = True
-        if args.forbid_same_positions   : g.forbid_same_positions    = True
-
-        msg_info = f"Graph ({(i+1):4d}/{len(graphs_input):4d} {graph_input}:"
-        write_out(args.output_file, msg_info)
-        stop_check = False
-        if check:
-            if preprocess_reduce_graph:
-                reduction_info = GraphUtil.reduce(nx_g)
-                if reduction_info.reduced_nodes > 0:
-                    stop_check = True
-                    msg_break = f" reduced to graph {reduction_info.output_canonical_g6}; reduced nodes {reduction_info.reduced_nodes}"
-            elif preprocess_check_non_udg_subgraphs:
-                if GraphUtil.contains_induced_subgraph(nx_g, graph_K23):
-                    stop_check = True
-                    msg_break += " contains K2,3 induced subgraph"
-                elif GraphUtil.contains_induced_subgraph(nx_g, graph_S6):
-                    stop_check = True
-                    msg_break += " contains S6 induced subgraph"
-            
-            if stop_check:
-                write_out(args.output_file, msg_break + '\n')
-                msg_info += msg_break
-            else:
-                start_time = time.time()
-                udg_check_result = g.udg_recognition()
-                end_time = time.time()
-                elapsed_time = end_time - start_time
-                msg_stop = "   UDG  " if udg_check_result else " non udg"
-                msg_stop += f" time = {int(1000*elapsed_time):9d} ms unit = {g.unit:2d}"
-                write_out(args.output_file, msg_stop + '\n')
-                msg_info += msg_stop
-
-            print(msg_info)
-
-            if args.output_file:
-                with open(args.output_file, 'a') as out_file:
-                    out_file.write(msg_info + '\n')
+        node_orders = []
+        if args.order == "ALL":
+            from itertools import permutations
+            vertices = list(range(g.n))
+            all_permutations = list(permutations(vertices))
+            for perm in all_permutations:
+                node_orders.append(','.join(str(vertex) for vertex in perm))
+        else:
+            node_orders.append(args.order)
         
-            g.print_result(print_vertex_coordinates, print_edges, print_work_summary)
+        for no_i, node_order in enumerate(node_orders):
+            if (no_i > 0) and nx_g is not None:
+                g = Graph(nx_g)
 
-        if draw_graph:
-            g.draw(draw_unit_circle)
-            import matplotlib.pyplot as plt
-            plt.show()
-            return
+            g.set_collect_work_summary(print_work_summary)
+
+            g.set_log_level     (args.log_level     )
+            g.set_print_progress(args.print_progress)
+
+            if args.unit:
+                g.set_unit(args.unit)
+
+            g.max_unit = args.max_unit
+
+            g.order_mode = node_order
+            
+            if args.point_iteration_order: g.point_iteration_order = args.point_iteration_order
+
+            if args.not_limit_points        : g.limit_points             = False
+            if args.limit_negative_distances: g.limit_negative_distances = True
+            if args.optimize_for_yes        : g.optimize_for_yes         = True
+            if args.forbid_same_positions   : g.forbid_same_positions    = True
+
+            msg_info = ""
+            if len(graphs_input) > 1:
+                msg_info = f"Graph ({(gi_i+1):4d}/{len(graphs_input):4d}) {graph_input} : "
+            if len(node_orders) > 1:
+                msg_info += f" Order ({(no_i+1):4d}/{len(node_orders):4d}) {node_order} : "
+            write_out(args.output_file, msg_info)
+            stop_check = False
+            if check:
+                if preprocess_reduce_graph:
+                    reduction_info = GraphUtil.reduce(nx_g)
+                    if reduction_info.reduced_nodes > 0:
+                        stop_check = True
+                        msg_break = f" reduced to graph {reduction_info.output_canonical_g6}; reduced nodes {reduction_info.reduced_nodes}"
+                elif preprocess_check_non_udg_subgraphs:
+                    if GraphUtil.contains_induced_subgraph(nx_g, graph_K23):
+                        stop_check = True
+                        msg_break += " contains K2,3 induced subgraph"
+                    elif GraphUtil.contains_induced_subgraph(nx_g, graph_S6):
+                        stop_check = True
+                        msg_break += " contains S6 induced subgraph"
+                
+                if stop_check:
+                    write_out(args.output_file, msg_break + '\n')
+                    msg_info += msg_break
+                else:
+                    start_time = time.time()
+                    udg_check_result = g.udg_recognition()
+                    end_time = time.time()
+                    elapsed_time = end_time - start_time
+                    msg_stop = "   UDG  " if udg_check_result else " non udg"
+                    msg_stop += f" time = {int(1000*elapsed_time):9d} ms unit = {g.unit:2d} {g.place_next_vertex_counter:12d} calls " + g.print_coordinates()
+                    write_out(args.output_file, msg_stop + '\n')
+                    msg_info += msg_stop
+
+                print(msg_info)
+
+                if args.output_file:
+                    with open(args.output_file, 'a') as out_file:
+                        out_file.write(msg_info + '\n')
+            
+                g.print_result(print_vertex_coordinates, print_edges, print_work_summary)
+
+            if draw_graph:
+                g.draw(draw_unit_circle)
+                import matplotlib.pyplot as plt
+                plt.show()
+                return
 
 if __name__ == "__main__":
     main()
