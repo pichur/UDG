@@ -685,9 +685,6 @@ class Graph:
             random.shuffle(P)
         # else: keep original order
 
-        if self.forbid_same_positions:
-            P = self.remove_used_coordinates(j, P)
-
         return P
 
     def remove_used_coordinates(self, j, P):      
@@ -967,11 +964,11 @@ def main() -> None:
         "-k", "--point_iteration_order", type=str, default="none",
         help="Point iteration order: none (default), ascending, descending, random")
     parser.add_argument(
-        "-s", "--forbid_same_positions", action="store_true",
-        help="Forbid same positions for different vertices")
+        "-s", "--allow_same_positions", action="store_true",
+        help="Allow same positions for different vertices, default false caused by auto detection of same vertex in graph")
     # processing
     parser.add_argument(
-        "-a", "--preprocess", type=str, default="",
+        "-a", "--preprocess", type=str, default="rs",
         help="Preprocess steps, can contains: r - reduce; s - check for known non-udg subgraphs")
     # output
     parser.add_argument(
@@ -1012,6 +1009,11 @@ def main() -> None:
     # Parse preprocess steps from the preprocess string
     preprocess_reduce_graph             = 'r' in args.preprocess
     preprocess_check_non_udg_subgraphs  = 's' in args.preprocess
+
+    if args.allow_same_positions:
+        DiscreteDisk.allow_same_positions = True
+    else:
+        DiscreteDisk.allow_same_positions = False
 
     if args.file:
         with open(args.graph, 'r') as f:
@@ -1071,7 +1073,6 @@ def main() -> None:
             if args.not_limit_points        : g.limit_points             = False
             if args.limit_negative_distances: g.limit_negative_distances = True
             if args.optimize_for_yes        : g.optimize_for_yes         = True
-            if args.forbid_same_positions   : g.forbid_same_positions    = True
 
             msg_info = ""
             if len(graphs_input) > 1:
@@ -1103,7 +1104,7 @@ def main() -> None:
                     end_time = time.time()
                     elapsed_time = end_time - start_time
                     msg_stop = "   UDG  " if udg_check_result else " non udg"
-                    msg_stop += f" time = {int(1000*elapsed_time):9d} ms unit = {g.unit:2d} {g.place_next_vertex_counter:12d} calls " + g.print_coordinates()
+                    msg_stop += f" time = {int(1000*elapsed_time):9d} ms {g.place_next_vertex_counter:12d} calls; unit = {g.unit:2d} " + g.print_coordinates()
                     write_out(args.output_file, msg_stop + '\n')
                     msg_info += msg_stop
 

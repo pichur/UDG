@@ -118,6 +118,9 @@ def _get_from_disk_cache(radius: int, connected: bool) -> np.ndarray:
         D[0, radius] = MODE_B
         D[radius, 0] = MODE_B
 
+        if C[radius, radius] == MODE_I and not DiscreteDisk.allow_same_positions:
+            C[radius, radius] = MODE_B
+
         C.setflags(write=False)
         D.setflags(write=False)
         _disk_cache[radius] = (C, D)
@@ -144,6 +147,8 @@ class DiscreteDisk:
     DISK_INNER : ClassVar["DiscreteDisk"]
 
     operation_disk_counter: ClassVar[int] = 0
+    
+    allow_same_positions: ClassVar[bool] = True
     
     @classmethod
     def get_operation_disk_counter(cls) -> int:
@@ -240,7 +245,11 @@ class DiscreteDisk:
             # Apply the operation
             asub = self.data[oy1-ay:oy2-ay, ox1-ax:ox2-ax]  # widok, nie kopia
             bsub = b   .data[oy1-by:oy2-by, ox1-bx:ox2-bx]  # ten sam kształt co a
-            np.copyto(asub, operation[asub, bsub])          # zapis in-place
+            if operation is TBL_AND:
+                np.minimum(asub, bsub, out=asub)   # in-place, bez alokacji
+            else:
+                np.copyto(asub, operation[asub, bsub])          # zapis in-place
+
             if operation is TBL_AND and b.rest == MODE_O:
                 # If rest of connected disk is outer, rest of the disk set to outer too
                 self.data[:oy1-ay, :] = MODE_O

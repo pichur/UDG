@@ -1,5 +1,5 @@
 import unittest
-import os, sys
+import os, sys, time
 import textwrap
 import numpy as np
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -584,6 +584,16 @@ class TestDiscreteDisk(unittest.TestCase):
             Coordinate(1,  1, MODE_I), Coordinate(2,  1, MODE_I), Coordinate(3,  1, MODE_I), Coordinate(4,  1, MODE_I)
         ]
         self.assertEqual(d.points_list('I'), expected)
+
+    def test_larga_number_of_big_joins(self):
+        start_time = time.time()
+        d = DiscreteDisk.disk(radius=100)
+        for i in range(10000):
+            d.connect(100, i % 5, (i * 3) % 7)
+        print(f"Operations: {discrete_disk.DiscreteDisk.get_operation_disk_counter()}")
+        work_time = time.time() - start_time
+        print(f"Time: {work_time} s")
+        self.assertTrue(work_time < 5.0)
 
 if __name__ == '__main__':
     unittest.main()
