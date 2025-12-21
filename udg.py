@@ -1110,10 +1110,6 @@ def main() -> None:
 
                 print(msg_info)
 
-                if args.output_file:
-                    with open(args.output_file, 'a') as out_file:
-                        out_file.write(msg_info + '\n')
-            
                 g.print_result(print_vertex_coordinates, print_edges, print_work_summary)
 
             if draw_graph:
