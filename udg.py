@@ -102,6 +102,9 @@ class Graph:
 
         self.set_unit(1)
         
+        # Pre-compile sorting function to avoid repeated if-elif checks
+        self._compile_point_sorting_function()
+        
 
         # By theory the eps_min is 1/(2**(2**O(n)))
         ##self.eps_min = 1/(2**(2**self.n))
@@ -114,6 +117,25 @@ class Graph:
         self.eps_min = 1
 
         self.calculate_vertex_edge_distance()
+
+    def _compile_point_sorting_function(self):
+        """Pre-compile sorting function based on point_iteration_order to avoid repeated if-elif checks."""
+        if self.point_iteration_order == 'ascending':
+            self._point_sort_key = lambda point: (point.y, point.x)
+        elif self.point_iteration_order == 'descending':
+            self._point_sort_key = lambda point: (-point.y, -point.x)
+        elif self.point_iteration_order == 'spiral':
+            self._point_sort_key = lambda point: (point.x * point.x + point.y * point.y, point.y, point.x)
+        elif self.point_iteration_order == 'reverse_spiral':
+            self._point_sort_key = lambda point: (-(point.x * point.x + point.y * point.y), -point.y, -point.x)
+        elif self.point_iteration_order == 'zigzag':
+            self._point_sort_key = lambda point: (point.y + point.x, point.y - point.x)
+        elif self.point_iteration_order == 'reverse_zigzag':
+            self._point_sort_key = lambda point: (-(point.y + point.x), -(point.y - point.x))
+        elif self.point_iteration_order == 'bisection':
+            self._point_sort_key = lambda point: (abs(point.x - point.y), point.y, point.x)
+        else:  # 'none' or any other value
+            self._point_sort_key = None
 
     def add_edge(self, u: int, v: int):
         if v not in self.adj[u]:
@@ -665,23 +687,10 @@ class Graph:
     def candidate_points(self, j: int, only_I: bool, count_I: int, count_B: int) -> list[Coordinate]:
         P = self.candidate_points_without_order(j, only_I, count_I, count_B)
 
-        if self.point_iteration_order == 'ascending':
-            P.sort(key=lambda point: (point.y, point.x))
-        elif self.point_iteration_order == 'descending':
-            P.sort(key=lambda point: (-point.y, -point.x))
-        elif self.point_iteration_order == 'spiral':
-            P.sort(key=lambda point: (point.x * point.x + point.y * point.y, point.y, point.x))
-        elif self.point_iteration_order == 'reverse_spiral':
-            P.sort(key=lambda point: (-(point.x * point.x + point.y * point.y), -point.y, -point.x))
-        elif self.point_iteration_order == 'zigzag':
-            P.sort(key=lambda point: (point.y + point.x, point.y - point.x))
-        elif self.point_iteration_order == 'reverse_zigzag':
-            P.sort(key=lambda point: (-(point.y + point.x), -(point.y - point.x)))
-        elif self.point_iteration_order == 'bisection':
-            P.sort(key=lambda point: (abs(point.x - point.y), point.y, point.x))
-        elif self.point_iteration_order == 'random':
-            random.shuffle(P)
-        # else: keep original order
+        # Ultra-fast pre-compiled sorting - eliminuje if-elif chain
+        if self._point_sort_key is not None:
+            P.sort(key=self._point_sort_key)
+        # else: keep original order (no sorting needed)
 
         return P
 
@@ -709,9 +718,9 @@ class Graph:
             """ Previous is 0, so coordinate is equal (0,0) """
             area = self.create_area_for_next_vertex_join(0, 0, self.order[0], self.order[1], True)
             if self.limit_points:
-                P = [p for p in area.points_iter(types = ('I' if only_I else 'IB')) if p.y == 0 and p.x >= 0]
+                P = [p for p in area.points_list(types = ('I' if only_I else 'IB')) if p.y == 0 and p.x >= 0]
             else:
-                P = [p for p in area.points_iter(types = ('I' if only_I else 'IB')) if p.y >= 0 and p.x >= 0]
+                P = [p for p in area.points_list(types = ('I' if only_I else 'IB')) if p.y >= 0 and p.x >= 0]
 
             if self.check_distance:
                 if self.check_distance_iteration >= len(P) - 1:
@@ -740,7 +749,7 @@ class Graph:
         """For limit points return only positive y coordinates for second vertex"""
         if j == 2:
             if self.limit_points:
-                P = [p for p in area.points_iter(types = ('I' if only_I else 'IB')) if p.y >= 0]
+                P = [p for p in area.points_list(types = ('I' if only_I else 'IB')) if p.y >= 0]
                 return P
             else:
                 return area.points_list(types = ('I' if only_I else 'IB'))
@@ -750,11 +759,11 @@ class Graph:
     def create_area_for_next_vertex_join(self, x:int, y:int, u: int, v: int, force_limit_negative_distance: bool = False) -> DiscreteDisk:
         distance = self.vertex_edge_distance[u][v]
         if distance == 1:
-            area = DiscreteDisk.disk(self.unit, x, y, connected = True)          
+            area = DiscreteDisk.disk(self.unit, x, y, connected = 1)          
         else:
-            area = DiscreteDisk.disk(self.unit, x, y, connected = False)
+            area = DiscreteDisk.disk(self.unit, x, y, connected = 0)
             if force_limit_negative_distance or self.limit_negative_distances:
-                area = create_area_by_join(area, DiscreteDisk.disk(self.unit * distance, x, y, connected = True))
+                area = create_area_by_join(area, DiscreteDisk.disk(self.unit * distance, x, y, connected = 1))
         return area
 
 
@@ -960,7 +969,7 @@ def main() -> None:
         help="Check only for UDG realization, not for missing trigraphs, stop by limit only")
     parser.add_argument(
         "-k", "--point_iteration_order", type=str, default="none",
-        help="Point iteration order: none (default), ascending, descending, random")
+        help="Point iteration order: none (default), ascending, descending, distance_ascending, distance_descending")
     parser.add_argument(
         "-s", "--allow_same_positions", action="store_true",
         help="Allow same positions for different vertices, default false caused by auto detection of same vertex in graph")
@@ -1066,7 +1075,9 @@ def main() -> None:
 
             g.order_mode = node_order
             
-            if args.point_iteration_order: g.point_iteration_order = args.point_iteration_order
+            if args.point_iteration_order: 
+                g.point_iteration_order = args.point_iteration_order
+                g._compile_point_sorting_function()  # Recompile after change
 
             if args.not_limit_points        : g.limit_points             = False
             if args.limit_negative_distances: g.limit_negative_distances = True

@@ -173,7 +173,7 @@ class AreaVisualizerApp:
             'x': x,
             'y': y,
             'connected': connected,
-            'disk': DiscreteDisk.disk(self.unit, x, y, connected=connected)
+            'disk': DiscreteDisk.disk(self.unit, x, y, connected = 1 if connected else 0)
         }
         
         self.disk_list.append(disk_info)
@@ -191,12 +191,12 @@ class AreaVisualizerApp:
         # Start with the first disk
         self.current_area = DiscreteDisk.disk(self.unit, self.disk_list[0]['x'], 
                                             self.disk_list[0]['y'], 
-                                            connected=self.disk_list[0]['connected'])
+                                            connected=1 if self.disk_list[0]['connected'] else 0)
         
         # Join with subsequent disks
         for disk_info in self.disk_list[1:]:
             disk = DiscreteDisk.disk(self.unit, disk_info['x'], disk_info['y'], 
-                                   connected=disk_info['connected'])
+                                   connected=1 if disk_info['connected'] else 0)
             self.current_area = create_area_by_join(self.current_area, disk)
     
     def update_disk_list(self):
@@ -244,20 +244,20 @@ class AreaVisualizerApp:
         if not self.current_area:
             return
         
-        # Get points from the area - call points_iter for each type separately
+        # Get points from the area - call points_list for each type separately
         points_I = []
         points_B = []
         
         # Get Interior points
         try:
-            for point in self.current_area.points_iter(types='I'):
+            for point in self.current_area.points_list(types='I'):
                 points_I.append((point.x, point.y))
         except:
             pass
             
         # Get Boundary points  
         try:
-            for point in self.current_area.points_iter(types='B'):
+            for point in self.current_area.points_list(types='B'):
                 points_B.append((point.x, point.y))
         except:
             pass
@@ -286,12 +286,12 @@ class AreaVisualizerApp:
         count_B = 0
         
         try:
-            count_I = sum(1 for p in self.current_area.points_iter(types='I'))
+            count_I = sum(1 for p in self.current_area.points_list(types='I'))
         except:
             pass
             
         try:
-            count_B = sum(1 for p in self.current_area.points_iter(types='B'))
+            count_B = sum(1 for p in self.current_area.points_list(types='B'))
         except:
             pass
         
@@ -348,7 +348,7 @@ class AreaVisualizerApp:
         
         # Get Interior points
         try:
-            points_I = list(self.current_area.points_iter(types='I'))
+            points_I = list(self.current_area.points_list(types='I'))
             if points_I:
                 text_widget.insert(tk.END, f"Interior Points ({len(points_I)}): \n")
                 for point in sorted(points_I, key=lambda p: (p.y, p.x)):
@@ -359,7 +359,7 @@ class AreaVisualizerApp:
             
         # Get Boundary points
         try:
-            points_B = list(self.current_area.points_iter(types='B'))
+            points_B = list(self.current_area.points_list(types='B'))
             if points_B:
                 text_widget.insert(tk.END, f"Boundary Points ({len(points_B)}): \n")
                 for point in sorted(points_B, key=lambda p: (p.y, p.x)):

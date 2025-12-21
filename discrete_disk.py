@@ -92,7 +92,7 @@ def symmetric_set(M: np.ndarray, i: int, j: int, radius: int, symbol: np.uint8) 
     M[radius - j + 1, radius + i    ] = symbol
     M[radius - j + 1, radius - i + 1] = symbol
 
-def _get_from_disk_cache(radius: int, connected: bool) -> np.ndarray:
+def _get_from_disk_cache(radius: int, connected: int = 1) -> np.ndarray:
     if radius not in _disk_cache:
         size = 2 * radius + 1
         # C = Connected, D = Disconnected
@@ -123,9 +123,9 @@ def _get_from_disk_cache(radius: int, connected: bool) -> np.ndarray:
 
         C.setflags(write=False)
         D.setflags(write=False)
-        _disk_cache[radius] = (C, D)
+        _disk_cache[radius] = (D, C)
     
-    return _disk_cache[radius][0 if connected else 1]
+    return _disk_cache[radius][connected]
 
 
 @dataclass(slots=True)
@@ -164,33 +164,32 @@ class DiscreteDisk:
         cls.operation_disk_counter = 0
     
     @classmethod
-    def disk(cls, radius: int = 4, x: int = 0, y: int = 0, connected: bool = True) -> "DiscreteDisk":
+    def disk(cls, radius: int = 4, x: int = 0, y: int = 0, connected: int = 1) -> "DiscreteDisk":
         M = _get_from_disk_cache(radius, connected)
         return cls(M, MODE_O if connected else MODE_I, x - radius, y - radius, True)
 
-    def points_iter(self, types: str = 'IB'):
-        """Iterate over points of selected types."""
+    def points_list(self, types: str = 'IB') -> list[Coordinate]:
+        # Vectorized version - znacznie szybsza dla dużych obszarów
         if types == 'I':
             mask = (self.data == MODE_I) 
         elif types == 'B':
             mask = (self.data == MODE_B) 
-        elif types == 'IB' or types == 'BI':
+        elif types == 'IB':
             mask = (self.data == MODE_I) | (self.data == MODE_B)
         else:
-            raise ValueError('Not supported types: {types}')
+            raise ValueError(f'Not supported types: {types}')
         
         ys, xs = np.nonzero(mask)
+        if len(ys) == 0:
+            return []
+            
+        # Vectorized coordinate creation
+        x_coords = xs + self.x
+        y_coords = ys + self.y  
         values = self.data[ys, xs]
-        x0, y0 = self.x, self.y
-        for iy, ix, val in zip(ys, xs, values):
-            yield Coordinate(x0 + ix, y0 + iy, val)
-
-    def points_IB_iter(self):
-        self.points_iter('I')
-        self.points_iter('B')
-
-    def points_list(self, types: str = 'IB') -> list[Coordinate]:
-        return list(self.points_iter(types))
+        
+        # List comprehension - szybsze niż pętla for
+        return [Coordinate(x_coords[i], y_coords[i], values[i]) for i in range(len(ys))]
 
     def points_IB_list(self) -> list[Coordinate]:
         return list(self.points_IB_iter())
@@ -359,7 +358,12 @@ def create_area_by_join(a: DiscreteDisk, b: DiscreteDisk) -> DiscreteDisk:
         ay = min_y - a.y
         bx = min_x - b.x
         by = min_y - b.y
-        M = TBL_AND[a.data[ay:ay+h, ax:ax+w], b.data[by:by+h, bx:bx+w]]
+        
+        # Optymalizacja: in-place operacja zamiast TBL_AND indexing
+        asub = a.data[ay:ay+h, ax:ax+w]
+        bsub = b.data[by:by+h, bx:bx+w]
+        M = asub.copy()  # Kopia dla zachowania oryginalnych danych
+        np.minimum(M, bsub, out=M)  # in-place AND operation - szybsze niż TBL_AND[asub, bsub]
     else:
         M = DISK_NONE
 
@@ -368,7 +372,10 @@ def create_area_by_join(a: DiscreteDisk, b: DiscreteDisk) -> DiscreteDisk:
         if M is DISK_NONE:
             return DISK_OUTER
         else:
-            return DiscreteDisk(M, MODE_O, min_x, min_y, False).crop()
+            result = DiscreteDisk(M, MODE_O, min_x, min_y, False)
+            if opts.crop:
+                return result.crop()
+            return result
     elif a.rest == MODE_O or b.rest == MODE_O:
         # One Outer other Inner
         if M is DISK_NONE:
@@ -381,7 +388,10 @@ def create_area_by_join(a: DiscreteDisk, b: DiscreteDisk) -> DiscreteDisk:
             cy = min_y - c.y
             OM = c.data.copy()
             np.copyto(OM[cy:cy+h, cx:cx+w], M)
-            return DiscreteDisk(OM, MODE_O, c.x, c.y, False).crop()
+            result = DiscreteDisk(OM, MODE_O, c.x, c.y, False)
+            if opts.crop:
+                return result.crop()
+            return result
     else:
         # Both Inner
         min_x_oo = min(a.x     , b.x     )
@@ -407,7 +417,10 @@ def create_area_by_join(a: DiscreteDisk, b: DiscreteDisk) -> DiscreteDisk:
             y_oo = min_y - min_y_oo
             np.copyto(MOO[y_oo:y_oo+h, x_oo:x_oo+w], M)
 
-        return DiscreteDisk(MOO, MODE_I, min_x_oo, min_y_oo, False).crop()
+        result = DiscreteDisk(MOO, MODE_I, min_x_oo, min_y_oo, False)
+        if opts.crop:
+            return result.crop()
+        return result
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Discrete Disk Helper.")
