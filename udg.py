@@ -54,7 +54,7 @@ class Graph:
     order: list[int]
     coordinates: list[Coordinate]
 
-    previous_area: list[list[DiscreteDisk]]
+    previous_area: list[list[any]]
 
     iterations: list[IterationInfo]
 
@@ -96,7 +96,7 @@ class Graph:
 
         # set to real values during processing
         # indexing by permuted work order
-        self.previous_area = [[DISK_NONE for _ in range(self.n)] for _ in range(self.n)]
+        self.previous_area = [[False for _ in range(self.n)] for _ in range(self.n)]
 
         self.order = range(self.n)
 
@@ -155,9 +155,7 @@ class Graph:
         return self
     
     def clear_previous_area(self, order_index: int):
-        fill = [DISK_NONE] * (self.n - order_index)
-        for row in self.previous_area:
-            row[order_index:] = fill
+        for row in self.previous_area: row[order_index] = False
 
     def set_iteration_len(self, v: int, len: int):
         c = self.iterations[v].point_size = len
@@ -728,9 +726,9 @@ class Graph:
             return P
 
         i = j - 2
-        while i >= 0 and self.previous_area[j][i] is DISK_NONE:
+        while i >= 0 and self.previous_area[j][i] is False:
             i -= 1
-
+        
         for k in range(i+1, j):
             coord_v_order_k = self.coordinates[self.order[k]]
             area = self.create_area_for_next_vertex_join(coord_v_order_k.x, coord_v_order_k.y, self.order[j], self.order[k])
@@ -1104,7 +1102,7 @@ def main() -> None:
                     end_time = time.time()
                     elapsed_time = end_time - start_time
                     msg_stop = "   UDG  " if udg_check_result else " non udg"
-                    msg_stop += f" time = {int(1000*elapsed_time):9d} ms {g.place_next_vertex_counter:12d} calls; unit = {g.unit:2d} " + g.print_coordinates()
+                    msg_stop += f" time = {int(1000*elapsed_time):9d} ms pnv={g.place_next_vertex_counter:12d} do={DiscreteDisk.get_operation_disk_counter():12d} unit={g.unit:2d} " + g.print_coordinates()
                     write_out(args.output_file, msg_stop + '\n')
                     msg_info += msg_stop
 
