@@ -8,15 +8,21 @@ sys.stdout.reconfigure(encoding='utf-8')
 
 def run_a():
     """D^{ 5_K_5_m"""
-    nxg = Graph6Converter.edge_list_to_graph('5: 1,3 ; 1,4 ; 1,5 ; 2,3 ; 2,4 ; 2,5 ; 3,4 ; 3,5 ; 4,5')
+    nxg = Graph6Converter.edge_list_to_graph('5: 1,3 1,4 1,5 2,3 2,4 2,5 3,4 3,5 4,5')
     g = udg.Graph(nxg)
     g.set_unit(8)
     g.udg_recognition()
 
 def run_b():
-    nxg = Graph6Converter.edge_list_to_graph('9: 1,2 ; 1,3 ; 1,4 ; 1,5 ; 5,6 ; 5,7 ; 5,8 ; 8,9 ; 8,1')
+    nxg = Graph6Converter.edge_list_to_graph('9: 1,2 1,3 1,4 1,5 5,6 5,7 5,8 8,9 8,1')
     g = udg.Graph(nxg)
-    g.set_unit(16)
+    g.set_unit(9)
+    g.udg_recognition()
+
+def run_c():
+    nxg = Graph6Converter.edge_list_to_graph('9: 1,2 1,3 1,4 1,5 2,5 2,6 2,7 2,8 8,9')
+    g = udg.Graph(nxg)
+    g.set_unit(9)
     g.udg_recognition()
 
 def print_stats_over(lp: LineProfiler, limit: float = 0.1, *, stream=None):
@@ -55,5 +61,5 @@ if __name__ == "__main__":
     lp = LineProfiler()
     lp.add_module(discrete_disk)
     lp.add_module(udg)
-    lp(run_b)()
+    lp(run_c)()
     print_stats_over(lp, limit=0.1)

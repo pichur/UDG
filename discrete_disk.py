@@ -134,13 +134,15 @@ class Coordinate:
     y: int
     mode: np.uint8
 
-@dataclass
 class DiscreteDisk:
-    data: np.ndarray
-    rest: np.uint8
-    x: int
-    y: int
-    _shared: bool = field(default=False, repr=False, compare=False)
+    __slots__ = ('data', 'rest', 'x', 'y', '_shared')
+    
+    def __init__(self, data: np.ndarray, rest: np.uint8, x: int, y: int, _shared: bool = False):
+        self.data = data
+        self.rest = rest
+        self.x = x
+        self.y = y
+        self._shared = _shared
 
     DISK_NONE  : ClassVar["DiscreteDisk"]
     DISK_OUTER : ClassVar["DiscreteDisk"]
@@ -152,11 +154,6 @@ class DiscreteDisk:
     
     @classmethod
     def get_operation_disk_counter(cls) -> int:
-        return cls.operation_disk_counter
-
-    @classmethod
-    def increment_operation_disk_counter(cls) -> int:
-        cls.operation_disk_counter += 1
         return cls.operation_disk_counter
 
     @classmethod
@@ -217,6 +214,9 @@ class DiscreteDisk:
 
     def operation_disk(self, operation: np.ndarray, b: "DiscreteDisk") -> "DiscreteDisk":
         """Limit area by & with a shifted disk, keeping current area and shape."""
+
+        DiscreteDisk.operation_disk_counter += 1
+
         if self._shared:
             self.data = self.data.copy()
             self.data.setflags(write=True)
@@ -255,8 +255,6 @@ class DiscreteDisk:
                 self.data[oy2-ay:, :] = MODE_O
                 self.data[:, :ox1-ax] = MODE_O
                 self.data[:, ox2-ax:] = MODE_O
-
-        DiscreteDisk.increment_operation_disk_counter()
 
         # Return self for method chaining
         return self
@@ -339,7 +337,7 @@ DISK_INNER = DiscreteDisk(np.full((0, 0), MODE_I, dtype=np.uint8), MODE_I, 0, 0,
 def create_area_by_join(a: DiscreteDisk, b: DiscreteDisk) -> DiscreteDisk:
     """Join area, increase shape if need."""
 
-    DiscreteDisk.increment_operation_disk_counter()
+    DiscreteDisk.operation_disk_counter += 1
 
     ah, aw = a.data.shape
     bh, bw = b.data.shape

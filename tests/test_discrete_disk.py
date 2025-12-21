@@ -26,7 +26,7 @@ class TestDiscreteDisk(unittest.TestCase):
         self.assertEqual(d.y, -2)
 
     def test_content_c1(self):
-        d = DiscreteDisk.disk(radius=1, connected=True)
+        d = DiscreteDisk.disk(radius=1, connected=1)
         self.assertDDDEq(d, """
         -==
         ===
@@ -34,7 +34,7 @@ class TestDiscreteDisk(unittest.TestCase):
         """)
 
     def test_content_c2(self):
-        d = DiscreteDisk.disk(radius=2, connected=True)
+        d = DiscreteDisk.disk(radius=2, connected=1)
         self.assertDDDEq(d, """
         -====
         -=++=
@@ -44,7 +44,7 @@ class TestDiscreteDisk(unittest.TestCase):
         """)
 
     def test_content_c3(self):
-        d = DiscreteDisk.disk(radius=3, connected=True)
+        d = DiscreteDisk.disk(radius=3, connected=1)
         self.assertDDDEq(d, """
         -======
         -=++++=
@@ -56,7 +56,7 @@ class TestDiscreteDisk(unittest.TestCase):
         """)
 
     def test_content_c4(self):
-        d = DiscreteDisk.disk(radius=4, connected=True)
+        d = DiscreteDisk.disk(radius=4, connected=1)
         self.assertDDDEq(d, """
         --======-
         -==++++==
@@ -70,7 +70,7 @@ class TestDiscreteDisk(unittest.TestCase):
         """)
 
     def test_content_d4(self):
-        d = DiscreteDisk.disk(radius=4, connected=False)
+        d = DiscreteDisk.disk(radius=4, connected=0)
         self.assertDDDEq(d, """
         ++======+
         +==----==
@@ -84,7 +84,7 @@ class TestDiscreteDisk(unittest.TestCase):
         """)
 
     def test_content_c5(self):
-        d = DiscreteDisk.disk(radius=5, connected=True)
+        d = DiscreteDisk.disk(radius=5, connected=1)
         self.assertDDDEq(d, """
         ---======--
         --=++++++=-
@@ -100,7 +100,7 @@ class TestDiscreteDisk(unittest.TestCase):
         """)
 
     def test_content_c6(self):
-        d = DiscreteDisk.disk(radius=6, connected=True)
+        d = DiscreteDisk.disk(radius=6, connected=1)
         self.assertDDDEq(d, """
         ---========--
         --==++++++==-
@@ -118,7 +118,7 @@ class TestDiscreteDisk(unittest.TestCase):
         """)
 
     def test_content_c7(self):
-        d = DiscreteDisk.disk(radius=7, connected=True)
+        d = DiscreteDisk.disk(radius=7, connected=1)
         self.assertDDDEq(d, """
         ----========---
         ---==++++++==--
@@ -138,7 +138,7 @@ class TestDiscreteDisk(unittest.TestCase):
         """)
 
     def test_content_c8(self):
-        d = DiscreteDisk.disk(radius=8, connected=True)
+        d = DiscreteDisk.disk(radius=8, connected=1)
         self.assertDDDEq(d, """
         -----========----
         ---===++++++===--
@@ -360,8 +360,8 @@ class TestDiscreteDisk(unittest.TestCase):
     
     def test_create_area_by_join_CC(self):
         d = create_area_by_join(
-            a = DiscreteDisk.disk(radius = 4, x = -7, y =  1, connected = True),
-            b = DiscreteDisk.disk(radius = 4, x = -6, y = -1, connected = True))
+            a = DiscreteDisk.disk(radius = 4, x = -7, y =  1, connected = 1),
+            b = DiscreteDisk.disk(radius = 4, x = -6, y = -1, connected = 1))
         self.assertEqual(d.x, -10) 
         self.assertEqual(d.y, - 3)
         self.assertEqual(d.data.shape, (7, 8))
@@ -378,14 +378,14 @@ class TestDiscreteDisk(unittest.TestCase):
 
     def test_create_area_by_join_CC_out_of_range(self):
         d = create_area_by_join(
-            a = DiscreteDisk.disk(radius = 3, x = -8, y =  9, connected = True),
-            b = DiscreteDisk.disk(radius = 3, x =  7, y = -5, connected = True))
+            a = DiscreteDisk.disk(radius = 3, x = -8, y =  9, connected = 1),
+            b = DiscreteDisk.disk(radius = 3, x =  7, y = -5, connected = 1))
         self.assertIs(d, DISK_OUTER)
 
     def test_create_area_by_join_CD(self):
         d = create_area_by_join(
-            a = DiscreteDisk.disk(radius = 4, x = -7, y =  1, connected = True),
-            b = DiscreteDisk.disk(radius = 4, x = -6, y = -1, connected = False))
+            a = DiscreteDisk.disk(radius = 4, x = -7, y =  1, connected = 1),
+            b = DiscreteDisk.disk(radius = 4, x = -6, y = -1, connected = 0))
         self.assertEqual(d.x, -7 - 4) 
         self.assertEqual(d.y,  1 - 4)
         self.assertEqual(d.data.shape, (9, 9))
@@ -405,8 +405,8 @@ class TestDiscreteDisk(unittest.TestCase):
     def test_create_area_by_join_CD_crop(self):
         discrete_disk.opts.crop = True
         d = create_area_by_join(
-            a = DiscreteDisk.disk(radius = 4, x = -7, y =  1, connected = True),
-            b = DiscreteDisk.disk(radius = 4, x = -6, y = -1, connected = False))
+            a = DiscreteDisk.disk(radius = 4, x = -7, y =  1, connected = 1),
+            b = DiscreteDisk.disk(radius = 4, x = -6, y = -1, connected = 0))
         discrete_disk.opts.crop = False
         self.assertEqual(d.x, -7 - 4) 
         self.assertEqual(d.y,  1 - 4 + 1)
@@ -425,8 +425,8 @@ class TestDiscreteDisk(unittest.TestCase):
 
     def test_create_area_by_join_DC(self):
         d = create_area_by_join(
-            a = DiscreteDisk.disk(radius = 4, x = -7, y =  1, connected = False),
-            b = DiscreteDisk.disk(radius = 4, x = -6, y = -1, connected = True))
+            a = DiscreteDisk.disk(radius = 4, x = -7, y =  1, connected = 0),
+            b = DiscreteDisk.disk(radius = 4, x = -6, y = -1, connected = 1))
         self.assertEqual(d.x, -6 - 4)
         self.assertEqual(d.y, -1 - 4)
         self.assertEqual(d.data.shape, (9, 9))
@@ -446,8 +446,8 @@ class TestDiscreteDisk(unittest.TestCase):
     def test_create_area_by_join_DC_crop(self):
         discrete_disk.opts.crop = True
         d = create_area_by_join(
-            a = DiscreteDisk.disk(radius = 4, x = -7, y =  1, connected = False),
-            b = DiscreteDisk.disk(radius = 4, x = -7, y = -3, connected = True))
+            a = DiscreteDisk.disk(radius = 4, x = -7, y =  1, connected = 0),
+            b = DiscreteDisk.disk(radius = 4, x = -7, y = -3, connected = 1))
         discrete_disk.opts.crop = False
         self.assertEqual(d.x, -7 - 4)
         self.assertEqual(d.y, -3 - 4)
@@ -466,8 +466,8 @@ class TestDiscreteDisk(unittest.TestCase):
 
     def test_create_area_by_join_DD(self):
         d = create_area_by_join(
-            a = DiscreteDisk.disk(radius = 4, x = -7, y =  1, connected = False),
-            b = DiscreteDisk.disk(radius = 4, x = -6, y = -1, connected = False))
+            a = DiscreteDisk.disk(radius = 4, x = -7, y =  1, connected = 0),
+            b = DiscreteDisk.disk(radius = 4, x = -6, y = -1, connected = 0))
         self.assertEqual(d.x, -7 - 4)
         self.assertEqual(d.y, -1 - 4)
         self.assertEqual(d.data.shape, (11, 10))
@@ -488,8 +488,8 @@ class TestDiscreteDisk(unittest.TestCase):
 
     def test_create_area_by_join_DD_out_of_range(self):
         d = create_area_by_join(
-            a = DiscreteDisk.disk(radius = 4, x = -8, y =  9, connected = False),
-            b = DiscreteDisk.disk(radius = 4, x =  3, y = -1, connected = False))
+            a = DiscreteDisk.disk(radius = 4, x = -8, y =  9, connected = 0),
+            b = DiscreteDisk.disk(radius = 4, x =  3, y = -1, connected = 0))
         self.assertEqual(d.x, -12)
         self.assertEqual(d.y, - 5)
         self.assertEqual(d.data.shape, (19, 20))
@@ -518,8 +518,8 @@ class TestDiscreteDisk(unittest.TestCase):
 
     def test_create_area_by_join_D3C6_0(self):
         d = create_area_by_join(
-            a = DiscreteDisk.disk(radius = 4, x = 0, y = 0, connected = False),
-            b = DiscreteDisk.disk(radius = 7, x = 0, y = 0, connected = True ))
+            a = DiscreteDisk.disk(radius = 4, x = 0, y = 0, connected = 0),
+            b = DiscreteDisk.disk(radius = 7, x = 0, y = 0, connected = 1))
         self.assertEqual(d.x, -7)
         self.assertEqual(d.y, -7)
         self.assertEqual(d.data.shape, (15, 15))
