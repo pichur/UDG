@@ -627,8 +627,11 @@ class Graph:
                     if not calc_D:
                         found_trigraph=True
                 if not only_I and (result == NO):
-                    # TODO print(f"XXX {self.unit} {j} forbidden at {self.state_info(only_I, j)}")
-                    pass
+                    if self.log_level >= LOG_DEBUG:
+                        if j < 4:
+                            print(f" unit={self.unit} level={j} forbidden at {self.state_info(only_I, j)}")
+                    elif self.log_level >= LOG_TRACE:
+                        print(f" unit={self.unit} level={j} forbidden at {self.state_info(only_I, j)}")
             else:
                 # if self.is_udg_realization():
                 if count_I + incr_I == self.n:
@@ -1060,6 +1063,8 @@ def main() -> None:
             node_orders.append(args.order)
         
         for no_i, node_order in enumerate(node_orders):
+            DiscreteDisk.reset_operation_disk_counter()
+
             if (no_i > 0) and nx_g is not None:
                 g = Graph(nx_g)
 
