@@ -8,7 +8,18 @@ import discrete_disk
 
 TEST_SHOW = np.array(['-', '=', '+'])
 
-class TestDiscreteDisk(unittest.TestCase):
+class TestDiscreteDiskSqBorder(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        """Set up sq_center mode before running tests."""
+        cls.original_mode = discrete_disk.opts.mode
+        discrete_disk.set_mode('sq_border')
+
+    @classmethod
+    def tearDownClass(cls):
+        """Restore original mode after running tests."""
+        discrete_disk.set_mode(cls.original_mode)
 
     def assertDDDEq(self, d : DiscreteDisk, content: str) :
         self.assertEqual(d.show(TEST_SHOW), textwrap.dedent(content).lstrip("\n ").rstrip("\n "))

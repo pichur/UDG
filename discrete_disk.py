@@ -32,7 +32,28 @@ _disk_cache: dict[int, (np.ndarray, np.ndarray)] = {}
 @dataclass
 class Options:
     crop: bool = False
+    mode: str  = 'sq_border'  # sq_center, sq_border
+
+    def set_mode(self, mode: str):
+        """Set mode value and clear cache if mode changed."""
+        if self.mode != mode:
+            self.mode = mode
+            self.clear_cache()
+    
+    def clear_cache(self):
+        """Clear the disk cache."""
+        global _disk_cache
+        _disk_cache.clear()
+
 opts = Options()
+
+def set_mode(mode: str):
+    """Global function to set mode and clear cache if needed."""
+    return opts.set_mode(mode)
+
+def clear_disk_cache():
+    """Global function to clear the disk cache."""
+    return opts.clear_cache()
 
 def R_CALC(mode:str = '1'):
     """Calculate the ranges for discrete disks."""
@@ -81,7 +102,37 @@ def D_CALC():
             DS[idx(i,j)] = i**2 + j**2
 D_CALC()
 
-def symmetric_set(M: np.ndarray, i: int, j: int, radius: int, symbol: np.uint8) -> None:
+
+def symmetric_set_sq_center(M: np.ndarray, i: int, j: int, radius: int, symbol: np.uint8) -> None:
+    """Ustawia symetryczne komórki w macierzy M."""
+    M[radius + i, radius + j] = symbol
+    M[radius + i, radius - j] = symbol
+    M[radius - i, radius + j] = symbol
+    M[radius - i, radius - j] = symbol
+    M[radius + j, radius + i] = symbol
+    M[radius + j, radius - i] = symbol
+    M[radius - j, radius + i] = symbol
+    M[radius - j, radius - i] = symbol
+
+# Coordinate at square center, border at half, so no equal values at square borders
+def _create_disk_sq_center(radius: int, connected: int = 1) -> None:
+    size = 2 * radius + 1
+    # + 1 for 0; C = Connected, D = Disconnected
+    C = np.full((size, size), MODE_O, dtype=np.uint8)
+    D = np.full((size, size), MODE_I, dtype=np.uint8)
+    for ix in range(radius + 1):
+        for iy in range(ix, radius + 1):
+            if DS[idx(2*ix+1, 2*iy+1)] < RES[2*radius]: # half values so no equal for center mode - for calculations use doubles values
+                symmetric_set_sq_center(C, ix, iy, radius, MODE_I)
+                symmetric_set_sq_center(D, ix, iy, radius, MODE_O)
+            elif DS[idx(1 if ix==0 else 2*ix-1, 1 if iy==0 else 2*iy-1)] < RES[2*radius]: # half values so no equal for center mode - for calculations use doubles values
+                symmetric_set_sq_center(C, ix, iy, radius, MODE_B)
+                symmetric_set_sq_center(D, ix, iy, radius, MODE_B)
+    C.setflags(write=False)
+    D.setflags(write=False)
+    _disk_cache[radius] = (D, C)
+
+def symmetric_set_sq_border(M: np.ndarray, i: int, j: int, radius: int, symbol: np.uint8) -> None:
     """Ustawia symetryczne komórki w macierzy M."""
     M[radius + i    , radius + j    ] = symbol
     M[radius + i    , radius - j + 1] = symbol
@@ -92,41 +143,48 @@ def symmetric_set(M: np.ndarray, i: int, j: int, radius: int, symbol: np.uint8) 
     M[radius - j + 1, radius + i    ] = symbol
     M[radius - j + 1, radius - i + 1] = symbol
 
+def _create_disk_sq_border(radius: int, connected: int = 1) -> None:
+    size = 2 * radius + 1
+    # C = Connected, D = Disconnected
+    C = np.full((size, size), MODE_O, dtype=np.uint8)
+    D = np.full((size, size), MODE_I, dtype=np.uint8)
+    for ix in range(1, radius + 1):
+        for iy in range(ix, radius + 1):
+            if DS[idx(ix, iy)] <= RES[radius]:
+                symmetric_set_sq_border(C, ix, iy, radius, MODE_I)
+                symmetric_set_sq_border(D, ix, iy, radius, MODE_O)
+            else: # DS[idx(ix, iy)] > RES[radius]
+                if DS[idx(ix-1, iy-1)] < RES[radius]:
+                    symmetric_set_sq_border(C, ix, iy, radius, MODE_B)
+                    symmetric_set_sq_border(D, ix, iy, radius, MODE_B)
+                elif DS[idx(ix-1, iy-1)] == RES[radius]: # Not symmetric case caused by range (a,b> closed at Top Right
+                    C[radius - ix + 1, radius - iy + 1] = MODE_B
+                    C[radius - iy + 1, radius - ix + 1] = MODE_B
+                    D[radius - ix + 1, radius - iy + 1] = MODE_B
+                    D[radius - iy + 1, radius - ix + 1] = MODE_B
+    # Not symmetric case caused by range (a,b> closed at Top Right, out of basic range
+    C[0, radius] = MODE_B
+    C[radius, 0] = MODE_B
+    D[0, radius] = MODE_B
+    D[radius, 0] = MODE_B
+
+    if C[radius, radius] == MODE_I and not DiscreteDisk.allow_same_positions:
+        C[radius, radius] = MODE_B
+
+    C.setflags(write=False)
+    D.setflags(write=False)
+    _disk_cache[radius] = (D, C)
+
 def _get_from_disk_cache(radius: int, connected: int = 1) -> np.ndarray:
     if radius not in _disk_cache:
-        size = 2 * radius + 1
-        # C = Connected, D = Disconnected
-        C = np.full((size, size), MODE_O, dtype=np.uint8)
-        D = np.full((size, size), MODE_I, dtype=np.uint8)
-        for ix in range(1, radius + 1):
-            for iy in range(ix, radius + 1):
-                if DS[idx(ix, iy)] <= RES[radius]:
-                    symmetric_set(C, ix, iy, radius, MODE_I)
-                    symmetric_set(D, ix, iy, radius, MODE_O)
-                else: # DS[idx(ix, iy)] > RES[radius]
-                    if DS[idx(ix-1, iy-1)] < RES[radius]:
-                        symmetric_set(C, ix, iy, radius, MODE_B)
-                        symmetric_set(D, ix, iy, radius, MODE_B)
-                    elif DS[idx(ix-1, iy-1)] == RES[radius]: # Not symmetric case caused by range (a,b> closed at Top Right
-                        C[radius - ix + 1, radius - iy + 1] = MODE_B
-                        C[radius - iy + 1, radius - ix + 1] = MODE_B
-                        D[radius - ix + 1, radius - iy + 1] = MODE_B
-                        D[radius - iy + 1, radius - ix + 1] = MODE_B
-        # Not symmetric case caused by range (a,b> closed at Top Right, out of basic range
-        C[0, radius] = MODE_B
-        C[radius, 0] = MODE_B
-        D[0, radius] = MODE_B
-        D[radius, 0] = MODE_B
-
-        if C[radius, radius] == MODE_I and not DiscreteDisk.allow_same_positions:
-            C[radius, radius] = MODE_B
-
-        C.setflags(write=False)
-        D.setflags(write=False)
-        _disk_cache[radius] = (D, C)
+        if opts.mode == 'sq_center':
+            _create_disk_sq_center(radius, connected)
+        elif opts.mode == 'sq_border':
+            _create_disk_sq_border(radius, connected)
+        else:
+            raise ValueError(f'Not supported disk mode: {opts.mode}')
     
     return _disk_cache[radius][connected]
-
 
 @dataclass(slots=True)
 class Coordinate:
@@ -330,7 +388,7 @@ class DiscreteDisk:
         ax.set_aspect('equal', adjustable='box')
         return ax
 
-DISK_NONE  = DiscreteDisk.disk(1, 0, 0)
+DISK_NONE  = DiscreteDisk(np.full((0, 0), MODE_U, dtype=np.uint8), MODE_U, 0, 0, True)
 DISK_OUTER = DiscreteDisk(np.full((0, 0), MODE_O, dtype=np.uint8), MODE_O, 0, 0, True)
 DISK_INNER = DiscreteDisk(np.full((0, 0), MODE_I, dtype=np.uint8), MODE_I, 0, 0, True)
 

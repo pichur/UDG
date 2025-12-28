@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import discrete_disk
 from ug import GraphUtil
-from discrete_disk import create_area_by_join, DiscreteDisk, Coordinate, MODES, MODE_U, MODE_I, MODE_B, MODE_O, DISK_NONE
+from discrete_disk import create_area_by_join, DiscreteDisk, Coordinate, MODES, MODE_U, MODE_I, MODE_B, MODE_O
 from dataclasses import dataclass
 
 
