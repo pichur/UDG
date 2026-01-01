@@ -15,6 +15,9 @@ class AreaVisualizerApp:
         self.root.title("Discrete Disk Area Visualizer")
         self.root.geometry("1200x800")
         
+        # Set protocol for window closing
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        
         # Initialize variables
         self.unit = 3
         self.current_area = None
@@ -23,6 +26,18 @@ class AreaVisualizerApp:
         
         self.setup_ui()
         self.update_visualization()
+    
+    def on_closing(self):
+        """Handle window closing event."""
+        try:
+            # Close matplotlib figure properly
+            plt.close(self.fig)
+        except:
+            pass
+        
+        # Destroy the root window
+        self.root.quit()
+        self.root.destroy()
     
     def setup_ui(self):
         """Setup the user interface."""
