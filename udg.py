@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import discrete_disk
 from ug import GraphUtil
-from discrete_disk import create_area_by_join, DiscreteDisk, Coordinate, MODES, MODE_U, MODE_I, MODE_B, MODE_O
+from discrete_disk import create_area_by_join, DiscreteDisk, Coordinate, MODES, MODE_U, MODE_I, MODE_B, MODE_O, set_mode
 from dataclasses import dataclass
 
 
@@ -976,6 +976,9 @@ def main() -> None:
     parser.add_argument(
         "-s", "--allow_same_positions", action="store_true",
         help="Allow same positions for different vertices, default false caused by auto detection of same vertex in graph")
+    parser.add_argument(
+        "-d", "--discrete_mode", type=str, default="sq_border",
+        help="Discrete disk mode: sq_center, sq_border (future: hex_center, hex_border); default sq_border")
     # processing
     parser.add_argument(
         "-a", "--preprocess", type=str, default="rs",
@@ -1024,6 +1027,9 @@ def main() -> None:
         DiscreteDisk.allow_same_positions = True
     else:
         DiscreteDisk.allow_same_positions = False
+    
+    # Set discrete disk mode
+    set_mode(args.discrete_mode)
 
     if args.file:
         with open(args.graph, 'r') as f:
@@ -1124,13 +1130,16 @@ def main() -> None:
 
                 print(msg_info)
 
+                if stop_check:
+                    continue
+
                 g.print_result(print_vertex_coordinates, print_edges, print_work_summary)
 
-            if draw_graph:
-                g.draw(draw_unit_circle)
-                import matplotlib.pyplot as plt
-                plt.show()
-                return
+                if draw_graph:
+                    g.draw(draw_unit_circle)
+                    import matplotlib.pyplot as plt
+                    plt.show()
+                    return
 
 if __name__ == "__main__":
     main()
