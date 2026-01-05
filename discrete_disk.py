@@ -10,6 +10,7 @@ MODE_O = 0 # symbol 'O' (outer   ) 0
 MODE_B = 1 # symbol 'B' (boundary) 1
 MODE_I = 2 # symbol 'I' (interior) 2
 MODE_U = 3 # symbol 'U' (unknown ) 3
+MODE_X = 4 # symbol 'X' (unused  ) 4
 
 MODES = ['O', 'B', 'I', '?']
 
@@ -26,6 +27,7 @@ TBL_DIFF = np.array([[MODE_O,MODE_O,MODE_O],   # a = O    a \ b
 
 N = 2**10
 DSQRT2 = 2 * np.sqrt(2)
+SQRT3 = np.sqrt(3)
 
 _disk_cache: dict[int, (np.ndarray, np.ndarray)] = {}
 
@@ -95,15 +97,21 @@ idx = lambda i,j: i*N - i*(i-1)//2 + (j-i)  # i<j
 
 def D_CALC():
     global DS
+    global HDS
     size = N*(N+1)//2
     DS = np.empty(size, dtype='int64')
     for i in range(N):
         for j in range(i, N):
             DS[idx(i,j)] = i**2 + j**2
+    HDS = np.empty((N, N), dtype='int64')
+    for i in range(N):
+        for j in range(N):
+            HDS[(i,j)] = i**2 + 3*j**2
+
 D_CALC()
 
 
-def symmetric_set_sq_center(M: np.ndarray, i: int, j: int, radius: int, symbol: np.uint8) -> None:
+def _symmetric_set_sq_center(M: np.ndarray, i: int, j: int, radius: int, symbol: np.uint8) -> None:
     """Ustawia symetryczne komórki w macierzy M."""
     M[radius + i, radius + j] = symbol
     M[radius + i, radius - j] = symbol
@@ -123,16 +131,16 @@ def _create_disk_sq_center(radius: int, connected: int = 1) -> None:
     for ix in range(radius + 1):
         for iy in range(ix, radius + 1):
             if DS[idx(2*ix+1, 2*iy+1)] < RES[2*radius]: # half values so no equal for center mode - for calculations use doubles values
-                symmetric_set_sq_center(C, ix, iy, radius, MODE_I)
-                symmetric_set_sq_center(D, ix, iy, radius, MODE_O)
+                _symmetric_set_sq_center(C, ix, iy, radius, MODE_I)
+                _symmetric_set_sq_center(D, ix, iy, radius, MODE_O)
             elif DS[idx(1 if ix==0 else 2*ix-1, 1 if iy==0 else 2*iy-1)] < RES[2*radius]: # half values so no equal for center mode - for calculations use doubles values
-                symmetric_set_sq_center(C, ix, iy, radius, MODE_B)
-                symmetric_set_sq_center(D, ix, iy, radius, MODE_B)
+                _symmetric_set_sq_center(C, ix, iy, radius, MODE_B)
+                _symmetric_set_sq_center(D, ix, iy, radius, MODE_B)
     C.setflags(write=False)
     D.setflags(write=False)
     _disk_cache[radius] = (D, C)
 
-def symmetric_set_sq_border(M: np.ndarray, i: int, j: int, radius: int, symbol: np.uint8) -> None:
+def _symmetric_set_sq_border(M: np.ndarray, i: int, j: int, radius: int, symbol: np.uint8) -> None:
     """Ustawia symetryczne komórki w macierzy M."""
     M[radius + i    , radius + j    ] = symbol
     M[radius + i    , radius - j + 1] = symbol
@@ -151,12 +159,12 @@ def _create_disk_sq_border(radius: int, connected: int = 1) -> None:
     for ix in range(1, radius + 1):
         for iy in range(ix, radius + 1):
             if DS[idx(ix, iy)] <= RES[radius]:
-                symmetric_set_sq_border(C, ix, iy, radius, MODE_I)
-                symmetric_set_sq_border(D, ix, iy, radius, MODE_O)
+                _symmetric_set_sq_border(C, ix, iy, radius, MODE_I)
+                _symmetric_set_sq_border(D, ix, iy, radius, MODE_O)
             else: # DS[idx(ix, iy)] > RES[radius]
                 if DS[idx(ix-1, iy-1)] < RES[radius]:
-                    symmetric_set_sq_border(C, ix, iy, radius, MODE_B)
-                    symmetric_set_sq_border(D, ix, iy, radius, MODE_B)
+                    _symmetric_set_sq_border(C, ix, iy, radius, MODE_B)
+                    _symmetric_set_sq_border(D, ix, iy, radius, MODE_B)
                 elif DS[idx(ix-1, iy-1)] == RES[radius]: # Not symmetric case caused by range (a,b> closed at Top Right
                     C[radius - ix + 1, radius - iy + 1] = MODE_B
                     C[radius - iy + 1, radius - ix + 1] = MODE_B
@@ -175,12 +183,51 @@ def _create_disk_sq_border(radius: int, connected: int = 1) -> None:
     D.setflags(write=False)
     _disk_cache[radius] = (D, C)
 
+def _symmetric_set_hex_center(M: np.ndarray, ix: int, iy: int, x_radius: int, y_radius: int, symbol: np.uint8) -> None:
+    """Ustawia symetryczne komórki w macierzy M."""
+    M[y_radius + iy, x_radius + ix] = symbol
+    M[y_radius + iy, x_radius - ix] = symbol
+    M[y_radius - iy, x_radius + ix] = symbol
+    M[y_radius - iy, x_radius - ix] = symbol
+
+def _hex_x_range(radius: int) -> int:
+    return int(np.ceil((2 * SQRT3 * radius + 2) / 3)) - 1
+
+def _create_disk_hex_center(radius: int, connected: int = 1) -> None:
+    x_radius = _hex_x_range(radius)
+    y_radius = 2 * radius
+    size_h = 2 * x_radius + 1
+    size_v = 2 * y_radius + 1
+    # C = Connected, D = Disconnected
+    C = np.full((size_v, size_h), MODE_O, dtype=np.uint8)
+    D = np.full((size_v, size_h), MODE_I, dtype=np.uint8)
+    for ix in range(x_radius + 1):
+        for iy in range(y_radius + 1):
+            if (ix + iy) % 2 == 0:
+                if (    HDS[3*ix+1, iy+1] < 12 * RES[radius]
+                    and HDS[3*ix+2, iy  ] < 12 * RES[radius]): # values never equals for center mode - always adds 1/3
+                    _symmetric_set_hex_center(C, ix, iy, x_radius, y_radius, MODE_I)
+                    _symmetric_set_hex_center(D, ix, iy, x_radius, y_radius, MODE_O)
+                elif (   HDS[1 if ix == 0 else 3*ix-1, 1 if iy == 0 else iy-1] < 12 * RES[radius]
+                      or HDS[2 if ix == 0 else 3*ix-2,                   iy  ] < 12 * RES[radius]): # values never equals for center mode - always adds 1/3
+                    _symmetric_set_hex_center(C, ix, iy, x_radius, y_radius, MODE_B)
+                    _symmetric_set_hex_center(D, ix, iy, x_radius, y_radius, MODE_B)
+            else:
+                _symmetric_set_hex_center(C, ix, iy, x_radius, y_radius, MODE_X)
+                _symmetric_set_hex_center(D, ix, iy, x_radius, y_radius, MODE_X)
+    
+    C.setflags(write=False)
+    D.setflags(write=False)
+    _disk_cache[radius] = (D, C)
+
 def _get_from_disk_cache(radius: int, connected: int = 1) -> np.ndarray:
     if radius not in _disk_cache:
         if opts.mode == 'sq_center':
             _create_disk_sq_center(radius, connected)
         elif opts.mode == 'sq_border':
             _create_disk_sq_border(radius, connected)
+        elif opts.mode == 'hex_center':
+            _create_disk_hex_center(radius, connected)
         else:
             raise ValueError(f'Not supported disk mode: {opts.mode}')
     
@@ -221,7 +268,15 @@ class DiscreteDisk:
     @classmethod
     def disk(cls, radius: int = 4, x: int = 0, y: int = 0, connected: int = 1) -> "DiscreteDisk":
         M = _get_from_disk_cache(radius, connected)
-        return cls(M, MODE_O if connected else MODE_I, x - radius, y - radius, True)
+
+        if opts.mode == 'hex_center':
+            x_shift = x - _hex_x_range(radius)
+            y_shift = y - 2 * radius
+        else:
+            x_shift = x - radius
+            y_shift = y - radius
+        
+        return cls(M, MODE_O if connected else MODE_I, x_shift, y_shift, True)
 
     def points_list(self, types: str = 'IB') -> list[Coordinate]:
         # Vectorized version - znacznie szybsza dla dużych obszarów
@@ -359,7 +414,7 @@ class DiscreteDisk:
             return MODE_O
         return self.data[y, x]
 
-    def show(self, symbol_map: np.ndarray = np.array(['◦', '▒', '█'])) -> str:
+    def show(self, symbol_map: np.ndarray = np.array(['◦', '▒', '█', '?', '∙'])) -> str:
         """Return an ASCII representation of the matrix or :class:`DiscreteDisk`."""
         rows = [''.join(symbol_map[row]) for row in self.data[::-1]]
         return '\n'.join(rows)
