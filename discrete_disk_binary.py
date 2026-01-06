@@ -300,7 +300,7 @@ class DiscreteDisk:
 
     def show(self, symbol_map: np.ndarray = np.array(["◦", "█"])) -> str:
         """ASCII representation (False='◦', True='█')."""
-        rows = ["".join(symbol_map[row.astype(np.int8)]) for row in self.data[::-1]]
+        rows = ["".join(symbol_map[row.astype(np.uint8)]) for row in self.data[::-1]]
         return "\n".join(rows)
 
     def display(self, ax=None) -> "plt.Axes":

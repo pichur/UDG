@@ -22,7 +22,22 @@ class TestDiscreteDiskSqCenter(unittest.TestCase):
         discrete_disk.set_mode(cls.original_mode)
 
     def assertDDDEq(self, d : DiscreteDisk, content: str) :
-        self.assertEqual(d.show(TEST_SHOW), textwrap.dedent(content).lstrip("\n ").rstrip("\n "))
+        actual = d.show(TEST_SHOW)
+        expected = textwrap.dedent(content).lstrip("\n ").rstrip("\n ")
+        # Compare line by line for better debugging
+        actual_lines = actual.split('\n')
+        expected_lines = expected.split('\n')
+        max_lines = max(len(actual_lines), len(expected_lines))
+        
+        for i in range(max_lines):
+            full_exp_line = expected_lines[i] if i < len(expected_lines) else "<missing>"
+            if i < len(expected_lines):
+                exp_line = ''.join(c for c in expected_lines[i] if c in TEST_SHOW)
+            else:
+                exp_line = "<missing>"
+            act_line = actual_lines[i] if i < len(actual_lines) else "<missing>"
+            
+            self.assertEqual(act_line, exp_line, f"Line {i}: expected '{full_exp_line}' but got '{act_line}'")
 
     def test_disk_position(self):
         r = 1
@@ -122,6 +137,24 @@ class TestDiscreteDiskSqCenter(unittest.TestCase):
         -=+++++++=-
         -===+++===-
         ---=====---
+        """)
+
+    def test_content_c6(self):
+        d = DiscreteDisk.disk(radius=6, connected=1)
+        self.assertDDDEq(d, """
+        ----=====----
+        --===+++===--
+        -==+++++++==-
+        -=+++++++++=-
+        ==+++++++++==
+        =+++++++++++=
+        =+++++++++++=
+        =+++++++++++=
+        ==+++++++++==
+        -=+++++++++=-
+        -==+++++++==-
+        --===+++===--
+        ----=====----
         """)
 
     def test_crop_O(self):

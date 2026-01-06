@@ -3,10 +3,10 @@ import os, sys
 import textwrap
 import numpy as np
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from discrete_disk import DiscreteDisk, Coordinate, MODE_I, MODE_B, MODE_O, DISK_INNER, DISK_OUTER, create_area_by_join
+from discrete_disk import DiscreteDisk, Coordinate, MODE_I, MODE_B, MODE_O, MODE_X,DISK_INNER, DISK_OUTER, create_area_by_join
 import discrete_disk
 
-TEST_SHOW = np.array(['-', '=', '+', '?', '∙'])
+TEST_SHOW = np.array(['-', '=', '+', '?', '.'])
 
 class TestDiscreteDiskHexCenter(unittest.TestCase):
 
@@ -22,7 +22,23 @@ class TestDiscreteDiskHexCenter(unittest.TestCase):
         discrete_disk.set_mode(cls.original_mode)
 
     def assertDDDEq(self, d : DiscreteDisk, content: str) :
-        self.assertEqual(d.show(TEST_SHOW), textwrap.dedent(content).lstrip("\n ").rstrip("\n "))
+        actual = d.show(TEST_SHOW)
+        expected = textwrap.dedent(content).lstrip("\n ").rstrip("\n ")
+        # Compare line by line for better debugging
+        actual_lines = actual.split('\n')
+        expected_lines = expected.split('\n')
+        max_lines = max(len(actual_lines), len(expected_lines))
+        
+        for i in range(max_lines):
+            full_exp_line = expected_lines[i] if i < len(expected_lines) else "<missing>"
+            if i < len(expected_lines):
+                
+                exp_line = ''.join(c for c in expected_lines[i] if c in TEST_SHOW)
+            else:
+                exp_line = "<missing>"
+            act_line = actual_lines[i] if i < len(actual_lines) else "<missing>"
+
+            self.assertEqual(act_line, exp_line, f"Line {i}: expected '{full_exp_line}' but got '{act_line}'")
 
     def test_disk_position(self):
         r = 1
@@ -44,11 +60,11 @@ class TestDiscreteDiskHexCenter(unittest.TestCase):
         self.assertEqual(d.x, -1)
         self.assertEqual(d.y, -2)
         self.assertDDDEq(d, """
-        ∙=∙
-        =∙=
-        ∙+∙
-        =∙=
-        ∙=∙
+        .=.
+        =.=
+        .+.
+        =.=
+        .=.
         """)
 
     def test_content_c2(self):
@@ -57,15 +73,15 @@ class TestDiscreteDiskHexCenter(unittest.TestCase):
         self.assertEqual(d.x, -2)
         self.assertEqual(d.y, -4)
         self.assertDDDEq(d, """
-        -∙=∙-
-        ∙=∙=∙
-        =∙+∙=
-        ∙+∙+∙
-        =∙+∙=
-        ∙+∙+∙
-        =∙+∙=
-        ∙=∙=∙
-        -∙=∙-
+        -.=.-
+        .=.=.
+        =.+.=
+        .+.+.
+        =.+.=
+        .+.+.
+        =.+.=
+        .=.=.
+        -.=.-
         """)
 
     def test_content_c3(self):
@@ -74,19 +90,19 @@ class TestDiscreteDiskHexCenter(unittest.TestCase):
         self.assertEqual(d.x, -4)
         self.assertEqual(d.y, -6)
         self.assertDDDEq(d, """
-        -∙=∙=∙=∙-
-        ∙-∙=∙=∙-∙
-        -∙=∙+∙=∙-
-        ∙=∙+∙+∙=∙
-        -∙+∙+∙+∙-
-        ∙=∙+∙+∙=∙
-        =∙+∙+∙+∙=
-        ∙=∙+∙+∙=∙
-        -∙+∙+∙+∙-
-        ∙=∙+∙+∙=∙
-        -∙=∙+∙=∙-
-        ∙-∙=∙=∙-∙
-        -∙=∙=∙=∙-
+        -.=.=.=.-
+        .-.=.=.-.
+        -.=.+.=.-
+        .=.+.+.=.
+        -.+.+.+.-
+        .=.+.+.=.
+        =.+.+.+.=
+        .=.+.+.=.
+        -.+.+.+.-
+        .=.+.+.=.
+        -.=.+.=.-
+        .-.=.=.-.
+        -.=.=.=.-
         """)
 
     def test_content_d3(self):
@@ -95,19 +111,19 @@ class TestDiscreteDiskHexCenter(unittest.TestCase):
         self.assertEqual(d.x, -4)
         self.assertEqual(d.y, -6)
         self.assertDDDEq(d, """
-        +∙=∙=∙=∙+
-        ∙+∙=∙=∙+∙
-        +∙=∙-∙=∙+
-        ∙=∙-∙-∙=∙
-        +∙-∙-∙-∙+
-        ∙=∙-∙-∙=∙
-        =∙-∙-∙-∙=
-        ∙=∙-∙-∙=∙
-        +∙-∙-∙-∙+
-        ∙=∙-∙-∙=∙
-        +∙=∙-∙=∙+
-        ∙+∙=∙=∙+∙
-        +∙=∙=∙=∙+
+        +.=.=.=.+
+        .+.=.=.+.
+        +.=.-.=.+
+        .=.-.-.=.
+        +.-.-.-.+
+        .=.-.-.=.
+        =.-.-.-.=
+        .=.-.-.=.
+        +.-.-.-.+
+        .=.-.-.=.
+        +.=.-.=.+
+        .+.=.=.+.
+        +.=.=.=.+
         """)
 
     def test_content_c4(self):
@@ -116,23 +132,23 @@ class TestDiscreteDiskHexCenter(unittest.TestCase):
         self.assertEqual(d.x, -5)
         self.assertEqual(d.y, -8)
         self.assertDDDEq(d, """
-        ∙-∙=∙=∙=∙-∙
-        -∙=∙=∙=∙=∙-
-        ∙-∙=∙+∙=∙-∙
-        -∙=∙+∙+∙=∙-
-        ∙=∙+∙+∙+∙=∙
-        -∙+∙+∙+∙+∙-
-        ∙=∙+∙+∙+∙=∙
-        =∙+∙+∙+∙+∙=
-        ∙=∙+∙+∙+∙=∙
-        =∙+∙+∙+∙+∙=
-        ∙=∙+∙+∙+∙=∙
-        -∙+∙+∙+∙+∙-
-        ∙=∙+∙+∙+∙=∙
-        -∙=∙+∙+∙=∙-
-        ∙-∙=∙+∙=∙-∙
-        -∙=∙=∙=∙=∙-
-        ∙-∙=∙=∙=∙-∙
+        .-.=.=.=.-.
+        -.=.=.=.=.-
+        .-.=.+.=.-.
+        -.=.+.+.=.-
+        .=.+.+.+.=.
+        -.+.+.+.+.-
+        .=.+.+.+.=.
+        =.+.+.+.+.=
+        .=.+.+.+.=.
+        =.+.+.+.+.=
+        .=.+.+.+.=.
+        -.+.+.+.+.-
+        .=.+.+.+.=.
+        -.=.+.+.=.-
+        .-.=.+.=.-.
+        -.=.=.=.=.-
+        .-.=.=.=.-.
         """)
 
     def test_content_d4(self):
@@ -141,162 +157,218 @@ class TestDiscreteDiskHexCenter(unittest.TestCase):
         self.assertEqual(d.x, -5)
         self.assertEqual(d.y, -8)
         self.assertDDDEq(d, """
-        ∙+∙=∙=∙=∙+∙
-        +∙=∙=∙=∙=∙+
-        ∙+∙=∙-∙=∙+∙
-        +∙=∙-∙-∙=∙+
-        ∙=∙-∙-∙-∙=∙
-        +∙-∙-∙-∙-∙+
-        ∙=∙-∙-∙-∙=∙
-        =∙-∙-∙-∙-∙=
-        ∙=∙-∙-∙-∙=∙
-        =∙-∙-∙-∙-∙=
-        ∙=∙-∙-∙-∙=∙
-        +∙-∙-∙-∙-∙+
-        ∙=∙-∙-∙-∙=∙
-        +∙=∙-∙-∙=∙+
-        ∙+∙=∙-∙=∙+∙
-        +∙=∙=∙=∙=∙+
-        ∙+∙=∙=∙=∙+∙
+        .+.=.=.=.+.
+        +.=.=.=.=.+
+        .+.=.-.=.+.
+        +.=.-.-.=.+
+        .=.-.-.-.=.
+        +.-.-.-.-.+
+        .=.-.-.-.=.
+        =.-.-.-.-.=
+        .=.-.-.-.=.
+        =.-.-.-.-.=
+        .=.-.-.-.=.
+        +.-.-.-.-.+
+        .=.-.-.-.=.
+        +.=.-.-.=.+
+        .+.=.-.=.+.
+        +.=.=.=.=.+
+        .+.=.=.=.+.
         """)
 
-    @unittest.skip("Test to do")
     def test_content_c5(self):
         d = DiscreteDisk.disk(radius=5, connected=1)
+        self.assertEqual(d.data.shape, (21, 13))
+        self.assertEqual(d.x, -6)
+        self.assertEqual(d.y, -10)
         self.assertDDDEq(d, """
-        ---=====---
-        -===+++===-
-        -=+++++++=-
-        ==+++++++==
-        =+++++++++=
-        =+++++++++=
-        =+++++++++=
-        ==+++++++==
-        -=+++++++=-
-        -===+++===-
-        ---=====---
-        """)
+                         10 -.-.=.=.=.-.-
+                          9 .-.=.=.=.=.-.
+                          8 -.=.+.+.+.=.-
+                          7 .-.+.+.+.+.-.
+                          6 -.=.+.+.+.=.-
+                          5 .=.+.+.+.+.=.
+                          4 -.+.+.+.+.+.-
+                          3 .=.+.+.+.+.=.
+                          2 =.+.+.+.+.+.=
+                          1 .+.+.+.+.+.+.
+                          0 =.+.+.+.+.+.=
+                          1 .+.+.+.+.+.+.
+                          2 =.+.+.+.+.+.=
+                          3 .=.+.+.+.+.=.
+                          4 -.+.+.+.+.+.-
+                          5 .=.+.+.+.+.=.
+                          6 -.=.+.+.+.=.-
+                          7 .-.+.+.+.+.-.
+                          8 -.=.+.+.+.=.-
+                          9 .-.=.=.=.=.-.
+                         10 -.-.=.=.=.-.-
+                         """)
 
-    @unittest.skip("Test to do")
+    def test_content_c6(self):
+        d = DiscreteDisk.disk(radius=6, connected=1)
+        self.assertEqual(d.data.shape, (25, 15))
+        self.assertEqual(d.x, -7)
+        self.assertEqual(d.y, -12)
+        self.assertDDDEq(d, """
+                         12 .-.-.=.=.=.-.-.
+                         11 -.-.=.=.=.=.-.-
+                         10 .-.=.+.+.+.=.-.
+                          9 -.=.+.+.+.+.=.-
+                          8 .-.+.+.+.+.+.-.
+                          7 -.=.+.+.+.+.=.-
+                          6 .=.+.+.+.+.+.=.
+                          5 -.+.+.+.+.+.+.-
+                          4 .=.+.+.+.+.+.=.
+                          3 =.+.+.+.+.+.+.=
+                          2 .+.+.+.+.+.+.+.
+                          1 =.+.+.+.+.+.+.=
+                          0 .+.+.+.+.+.+.+.
+                          1 =.+.+.+.+.+.+.=
+                          2 .+.+.+.+.+.+.+.
+                          3 =.+.+.+.+.+.+.=
+                          4 .=.+.+.+.+.+.=.
+                          5 -.+.+.+.+.+.+.-
+                          6 .=.+.+.+.+.+.=.
+                          7 -.=.+.+.+.+.=.-
+                          8 .-.+.+.+.+.+.-.
+                          9 -.=.+.+.+.+.=.-
+                         10 .-.=.+.+.+.=.-.
+                         11 -.-.=.=.=.=.-.-
+                         12 .-.-.=.=.=.-.-.
+                         """)
+        
     def test_crop_O(self):
         discrete_disk.opts.crop = True
         d = DiscreteDisk(
             data=np.array([
-                [MODE_O,MODE_O,MODE_O],
-                [MODE_O,MODE_O,MODE_O],
-                [MODE_B,MODE_I,MODE_O],
-                [MODE_I,MODE_B,MODE_O],
-                [MODE_B,MODE_I,MODE_O],
-                [MODE_O,MODE_O,MODE_O],
+                [MODE_X,MODE_O,MODE_X,MODE_O,MODE_X,MODE_O,MODE_X],
+                [MODE_O,MODE_X,MODE_O,MODE_X,MODE_O,MODE_X,MODE_O],
+                [MODE_X,MODE_B,MODE_X,MODE_I,MODE_X,MODE_O,MODE_X],
+                [MODE_I,MODE_X,MODE_B,MODE_X,MODE_O,MODE_X,MODE_O],
+                [MODE_X,MODE_B,MODE_X,MODE_I,MODE_X,MODE_O,MODE_X],
+                [MODE_O,MODE_X,MODE_O,MODE_X,MODE_O,MODE_X,MODE_O],
                 ],
                 dtype=np.uint8),
             rest=MODE_O, x = 1, y = 2).crop()
         discrete_disk.opts.crop = False
         self.assertEqual(d.x, 1) 
         self.assertEqual(d.y, 4)
-        self.assertEqual(d.data.shape, (3, 2))
+        self.assertEqual(d.data.shape, (3, 4))
         self.assertEqual(d.rest, MODE_O)
         self.assertDDDEq(d, """
-        =+
-        +=
-        =+
+        .=.+
+        +.=.
+        .=.+
         """)
 
-    @unittest.skip("Test to do")
     def test_crop_I(self):
         discrete_disk.opts.crop = True
         d = DiscreteDisk(
             data=np.array([
-                [MODE_I,MODE_O,MODE_O],
-                [MODE_I,MODE_I,MODE_O],
-                [MODE_I,MODE_I,MODE_I],
-                [MODE_I,MODE_I,MODE_O],
-                [MODE_I,MODE_I,MODE_I],
-                [MODE_I,MODE_I,MODE_I],
-                [MODE_I,MODE_I,MODE_I],
+                [MODE_I,MODE_X,MODE_O,MODE_X,MODE_O,MODE_X],
+                [MODE_X,MODE_I,MODE_X,MODE_I,MODE_X,MODE_O],
+                [MODE_I,MODE_X,MODE_I,MODE_X,MODE_I,MODE_X],
+                [MODE_X,MODE_I,MODE_X,MODE_I,MODE_X,MODE_O],
+                [MODE_I,MODE_X,MODE_I,MODE_X,MODE_I,MODE_X],
+                [MODE_X,MODE_I,MODE_X,MODE_I,MODE_X,MODE_I],
+                [MODE_I,MODE_X,MODE_I,MODE_X,MODE_I,MODE_X],
                 ],
                 dtype=np.uint8),
             rest=MODE_I, x = 1, y = 2).crop()
         discrete_disk.opts.crop = False
-        self.assertEqual(d.x, 2) 
+        self.assertEqual(d.x, 3) 
         self.assertEqual(d.y, 2)
-        self.assertEqual(d.data.shape, (4, 2))
+        self.assertEqual(d.data.shape, (4, 4))
         self.assertEqual(d.rest, MODE_I)
         self.assertDDDEq(d, """
-        +-
-        ++
-        +-
-        --
+        .+.-
+        +.+.
+        .+.-
+        -.-.
         """)
 
-    @unittest.skip("Test to do")
     def test_connect_a(self):
-        d = DiscreteDisk.disk(4)
-        r = 4
-        d.connect(4, 2, 1)
-        self.assertEqual(d.data.shape, (9, 9))
+        d = DiscreteDisk.disk(3)
+        d.connect(3, 1, -3)
+        d.normalize()
+        self.assertEqual(d.data.shape, (13, 9))
         self.assertDDDEq(d, """
-        ---====--
-        --==++==-
-        --=++++==
-        --=+++++=
-        --=+++++=
-        --==++++=
-        ---==++==
-        ----====-
-        ---------
-        """)
+                         6 -.-.-.-.-
+                         5 .-.-.-.-.
+                         4 -.-.-.-.-
+                         3 .-.=.=.=.
+                         2 -.-.=.=.-
+                         1 .-.=.+.=.
+                         0 -.=.+.+.=
+                         1 .-.+.+.=.
+                         2 -.=.+.+.-
+                         3 .=.+.+.=.
+                         4 -.=.+.=.-
+                         5 .-.=.=.-.
+                         6 -.=.=.=.-
+                         """)
 
-    @unittest.skip("Test to do")
     def test_connect_d(self):
         d = DiscreteDisk.disk(3)
         d.connect(3, 8, 8)
         self.assertEqual(d.is_all_points_O(), True)
 
-    @unittest.skip("Test to do")
     def test_connect_out_of_range_a(self):
         d = DiscreteDisk.disk(3)
         r = 4
         d.connect(3, 10, -2)
         self.assertEqual(d.is_all_points_O(), True)
 
-    @unittest.skip("Test to do")
     def test_connect_out_of_range_b(self):
         d = DiscreteDisk.disk(3)
         r = 4
         d.connect(3, -9, 9)
         self.assertEqual(d.is_all_points_O(), True)
 
-    @unittest.skip("Test to do")
     def test_disconnect_a(self):
-        d = DiscreteDisk.disk(5)
-        d.disconnect(3, 2, 1)
-        self.assertEqual(d.data.shape, (11, 11))
+        d = DiscreteDisk.disk(radius=6, connected=1)
+        d.disconnect(3, 3, 1)
+        self.assertEqual(d.data.shape, (25, 15))
+        self.assertEqual(d.x, -7)
+        self.assertEqual(d.y, -12)
         self.assertDDDEq(d, """
-        ---=====---
-        -===+=====-
-        -=++==---=-
-        ==++=-----=
-        =+++=-----=
-        =+++=-----=
-        =+++==---==
-        ==+++======
-        -=+++++++=-
-        -===+++===-
-        ---=====---
-        """)
+						 12 .-.-.=.=.=.-.-.
+                         11 -.-.=.=.=.=.-.-
+                         10 .-.=.+.+.+.=.-.
+                          9 -.=.+.+.+.+.=.-
+                          8 .-.+.+.+.+.+.-.
+                          7 -.=.+.+.=.=.=.-
+                          6 .=.+.+.+.=.=.=.
+                          5 -.+.+.+.=.-.=.-
+                          4 .=.+.+.=.-.-.=.
+                          3 =.+.+.+.-.-.-.=
+                          2 .+.+.+.=.-.-.=.
+                          1 =.+.+.=.-.-.-.=
+                          0 .+.+.+.=.-.-.=.
+                          1 =.+.+.+.-.-.-.=
+                          2 .+.+.+.=.-.-.=.
+                          3 =.+.+.+.=.-.=.=
+                          4 .=.+.+.+.=.=.=.
+                          5 -.+.+.+.=.=.=.-
+                          6 .=.+.+.+.+.+.=.
+                          7 -.=.+.+.+.+.=.-
+                          8 .-.+.+.+.+.+.-.
+                          9 -.=.+.+.+.+.=.-
+                         10 .-.=.+.+.+.=.-.
+                         11 -.-.=.=.=.=.-.-
+                         12 .-.-.=.=.=.-.-.
+                         """)
 
-    @unittest.skip("Test to do")
     def test_disconnect_out_of_range_b(self):
         d = DiscreteDisk.disk(3)
         r = 4
         d.connect(3, -9, 9)
         self.assertEqual(d.is_all_points_O(), True)
     
-    @unittest.skip("Test to do")
     def test_create_area_by_join_CC_out_of_range(self):
         d = create_area_by_join(
-            a = DiscreteDisk.disk(radius = 3, x = -8, y =  9, connected = True),
+            a = DiscreteDisk.disk(radius = 3, x = -8, y =  6, connected = True),
             b = DiscreteDisk.disk(radius = 3, x =  7, y = -5, connected = True))
         self.assertIs(d, DISK_OUTER)
 

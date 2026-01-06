@@ -15,14 +15,18 @@ MODE_X = 4 # symbol 'X' (unused  ) 4
 MODES = ['O', 'B', 'I', '?']
 
  # kolejność kolumn:  b = O, B, I   (0,1,2)
-TBL_AND  = np.array([[MODE_O,MODE_O,MODE_O],   # a = O    a & b  b & a
-                     [MODE_O,MODE_B,MODE_B],   # a = B
-                     [MODE_O,MODE_B,MODE_I]],  # a = I
+TBL_AND  = np.array([[MODE_O,MODE_O,MODE_O,MODE_U,MODE_U],   # a = O    a & b  b & a
+                     [MODE_O,MODE_B,MODE_B,MODE_U,MODE_U],   # a = B
+                     [MODE_O,MODE_B,MODE_I,MODE_U,MODE_U],   # a = I
+                     [MODE_U,MODE_U,MODE_U,MODE_U,MODE_U],
+                     [MODE_U,MODE_U,MODE_U,MODE_U,MODE_X]],  
                     dtype=np.uint8)
  # kolejność kolumn:  b = O, B, I   (0,1,2)
-TBL_DIFF = np.array([[MODE_O,MODE_O,MODE_O],   # a = O    a \ b
-                     [MODE_B,MODE_B,MODE_O],   # a = B
-                     [MODE_I,MODE_B,MODE_O]],  # a = I
+TBL_DIFF = np.array([[MODE_O,MODE_O,MODE_O,MODE_U,MODE_U],   # a = O    a \ b
+                     [MODE_B,MODE_B,MODE_O,MODE_U,MODE_U],   # a = B
+                     [MODE_I,MODE_B,MODE_O,MODE_U,MODE_U],   # a = I
+                     [MODE_U,MODE_U,MODE_U,MODE_U,MODE_U],
+                     [MODE_U,MODE_U,MODE_U,MODE_U,MODE_X]],  
                     dtype=np.uint8)
 
 N = 2**10
@@ -373,18 +377,19 @@ class DiscreteDisk:
         return self
     
     def crop(self) -> "DiscreteDisk":
-        """Crop the matrix by removing outer rows/columns with values equal to self.rest."""
+        """Crop the matrix by removing outer rows/columns with values equal to self.rest or MODE_X."""
+
         if not opts.crop:
             return self
         
-        mask = self.data != self.rest
+        mask = (self.data != self.rest) & (self.data != MODE_X)
 
         # Find bounds
         rows = np.any(mask, axis=1)
         cols = np.any(mask, axis=0)
 
         if not np.any(rows) or not np.any(cols):
-            # All values are rest, return minimal disk
+            # All values are rest or MODE_X, return minimal disk
             return DISK_INNER if self.rest == MODE_I else DISK_OUTER
 
         y0, y1 = np.where(rows)[0][[0, -1]]
@@ -398,6 +403,7 @@ class DiscreteDisk:
 
     def is_all_points_O(self) -> bool:
         """Check if all points are set to the outer mode."""
+        return np.all((self.data == MODE_O) | (self.data == MODE_X))
         return np.all(self.data == MODE_O)
     
     def get_relative(self, x: int, y: int) -> np.uint8:
@@ -414,7 +420,7 @@ class DiscreteDisk:
             return MODE_O
         return self.data[y, x]
 
-    def show(self, symbol_map: np.ndarray = np.array(['◦', '▒', '█', '?', '∙'])) -> str:
+    def show(self, symbol_map: np.ndarray = np.array(['◦', '▒', '█', '?', ' '])) -> str:
         """Return an ASCII representation of the matrix or :class:`DiscreteDisk`."""
         rows = [''.join(symbol_map[row]) for row in self.data[::-1]]
         return '\n'.join(rows)
@@ -442,6 +448,17 @@ class DiscreteDisk:
         ax.set_yticks([])
         ax.set_aspect('equal', adjustable='box')
         return ax
+    
+    def normalize(self) -> "DiscreteDisk":
+        """Normalize the disk, for hex mode fix area by setting unused cells for odd x+y"""
+        if opts.mode == 'hex_center':
+            h, w = self.data.shape
+            for iy in range(h):
+                for ix in range(w):
+                    if ( (ix + self.x) + (iy + self.y) ) % 2 != 0:
+                        self.data[iy, ix] = MODE_X
+        return self
+        
 
 DISK_NONE  = DiscreteDisk(np.full((0, 0), MODE_U, dtype=np.uint8), MODE_U, 0, 0, True)
 DISK_OUTER = DiscreteDisk(np.full((0, 0), MODE_O, dtype=np.uint8), MODE_O, 0, 0, True)
