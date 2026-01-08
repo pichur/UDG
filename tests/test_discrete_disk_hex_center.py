@@ -372,5 +372,59 @@ class TestDiscreteDiskHexCenter(unittest.TestCase):
             b = DiscreteDisk.disk(radius = 3, x =  7, y = -5, connected = True))
         self.assertIs(d, DISK_OUTER)
 
+    def test_iter_points_default(self):
+        d = DiscreteDisk.disk(radius=2, x=-1, y=3)
+        p = d.points_list()
+        """
+            32101
+            21012
+        1 4 -.=.-
+        0 3 .=.=.
+        1 2 =.+.=
+        2 1 .+.+.
+        3 0 =.+.=
+        4 1 .+.+.
+        5 2 =.+.=
+        6 3 .=.=.
+        7 4 -.=.-
+        """
+        expected = [
+                                                                    Coordinate(-1, -1, MODE_B),
+                                        Coordinate(-2,  0, MODE_B),                             Coordinate(0,  0, MODE_B),
+            Coordinate(-3,  1, MODE_B),                             Coordinate(-1,  1, MODE_I),                            Coordinate(1,  1, MODE_B),
+                                        Coordinate(-2,  2, MODE_I),                             Coordinate(0,  2, MODE_I),
+            Coordinate(-3,  3, MODE_B),                             Coordinate(-1,  3, MODE_I),                            Coordinate(1,  3, MODE_B),
+                                        Coordinate(-2,  4, MODE_I),                             Coordinate(0,  4, MODE_I),
+            Coordinate(-3,  5, MODE_B),                             Coordinate(-1,  5, MODE_I),                            Coordinate(1,  5, MODE_B),
+                                        Coordinate(-2,  6, MODE_B),                             Coordinate(0,  6, MODE_B),
+                                                                    Coordinate(-1,  7, MODE_B)
+        ]
+        self.assertEqual(p, expected)
+
+    def test_iter_points_I(self):
+        d = DiscreteDisk.disk(radius=2, x=2, y=-2)
+        p = d.points_list(types='I')
+        """
+            01234
+            21012
+        6 4 -.=.-
+        5 3 .=.=.
+        4 2 =.+.=
+        3 1 .+.+.
+        2 0 =.+.=
+        1 1 .+.+.
+        0 2 =.+.=
+        1 3 .=.=.
+        2 4 -.=.-
+        """
+        expected = [
+                                       Coordinate(2, -4, MODE_I),
+            Coordinate(1, -3, MODE_I),                            Coordinate(3, -3, MODE_I),
+                                       Coordinate(2, -2, MODE_I),
+            Coordinate(1, -1, MODE_I),                            Coordinate(3, -1, MODE_I),
+                                       Coordinate(2,  0, MODE_I),
+        ]
+        self.assertEqual(p, expected)
+
 if __name__ == '__main__':
     unittest.main()
