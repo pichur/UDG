@@ -242,7 +242,10 @@ class Graph:
 
         if (print_vertex):
             for i in range(self.n):
-                print(f"  V ({i}): ({self.coordinates[i].x:7d}, {self.coordinates[i].y:7d})")
+                vertex_coord = f"  V ({i}): ({self.coordinates[i].x:7d}, {self.coordinates[i].y:7d})"
+                if get_disk_mode() == 'hex_center':
+                    vertex_coord += f" -> real: ({self.coordinates[i].get_real_x():10.3f}, {self.coordinates[i].get_real_y():10.3f})"
+                print(vertex_coord)
         fail = False
         for i in range(self.n):
             for j in range(i + 1, self.n):
@@ -508,13 +511,16 @@ class Graph:
                 else:
                     r_mode = MODE_U
 
-                dx = self.coordinates[v].x
+                dy = self.coordinates[v].y
 
-                if dx >= len(self.node_distances):
-                    self.node_distances.extend([MODE_U] * (dx - len(self.node_distances) + 1))
+                if get_disk_mode() == 'hex_center':
+                    dy = dy / 2 # convert to real distance, for hex and y axis is doubled
 
-                if self.node_distances[dx] != MODE_I:
-                    self.node_distances[dx] = r_mode
+                if dy >= len(self.node_distances):
+                    self.node_distances.extend([MODE_U] * (dy - len(self.node_distances) + 1))
+
+                if self.node_distances[dy] != MODE_I:
+                    self.node_distances[dy] = r_mode
 
                 self.check_distance_iteration += 1
 
@@ -717,9 +723,9 @@ class Graph:
             """ Previous is 0, so coordinate is equal (0,0) """
             area = self.create_area_for_next_vertex_join(0, 0, self.order[0], self.order[1], True)
             if self.limit_points:
-                P = [p for p in area.points_list(types = ('I' if only_I else 'IB')) if p.y == 0 and p.x >= 0] # for hex only y axis is unit one
+                P = [p for p in area.points_list(types = ('I' if only_I else 'IB')) if p.x == 0 and p.y >= 0] # for hex only y axis is unit one
             else:
-                P = [p for p in area.points_list(types = ('I' if only_I else 'IB')) if p.y >= 0 and p.x >= 0]
+                P = [p for p in area.points_list(types = ('I' if only_I else 'IB')) if p.x >= 0 and p.y >= 0]
 
             if self.check_distance:
                 if self.check_distance_iteration >= len(P) - 1:
@@ -748,7 +754,7 @@ class Graph:
         """For limit points return only positive y coordinates for second vertex"""
         if j == 2:
             if self.limit_points:
-                P = [p for p in area.points_list(types = ('I' if only_I else 'IB')) if p.y >= 0]
+                P = [p for p in area.points_list(types = ('I' if only_I else 'IB')) if p.x >= 0]
                 return P
             else:
                 return area.points_list(types = ('I' if only_I else 'IB'))
