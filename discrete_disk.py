@@ -38,12 +38,12 @@ _disk_cache: dict[int, (np.ndarray, np.ndarray)] = {}
 @dataclass
 class Options:
     crop: bool = False
-    mode: str  = 'sq_border'  # sq_center, sq_border
+    disk_mode: str  = 'sq_border'  # sq_center, sq_borderm hex_center
 
-    def set_mode(self, mode: str):
-        """Set mode value and clear cache if mode changed."""
-        if self.mode != mode:
-            self.mode = mode
+    def set_disk_mode(self, disk_mode: str):
+        """Set disk mode value and clear cache if disk mode changed."""
+        if self.disk_mode != disk_mode:
+            self.disk_mode = disk_mode
             self.clear_cache()
     
     def clear_cache(self):
@@ -53,9 +53,13 @@ class Options:
 
 opts = Options()
 
-def set_mode(mode: str):
-    """Global function to set mode and clear cache if needed."""
-    return opts.set_mode(mode)
+def set_disk_mode(disk_mode: str):
+    """Global function to set disk  and clear cache if needed."""
+    return opts.set_disk_mode(disk_mode)
+
+def get_disk_mode() -> str:
+    """Global function to get the current disk mode."""
+    return opts.disk_mode
 
 def clear_disk_cache():
     """Global function to clear the disk cache."""
@@ -126,7 +130,7 @@ def _symmetric_set_sq_center(M: np.ndarray, i: int, j: int, radius: int, symbol:
     M[radius - j, radius + i] = symbol
     M[radius - j, radius - i] = symbol
 
-# Coordinate at square center, border at half, so no equal values at square borders
+# Coordinates at square center, half values on border, so no equal values at square borders
 def _create_disk_sq_center(radius: int, connected: int = 1) -> None:
     size = 2 * radius + 1
     # + 1 for 0; C = Connected, D = Disconnected
@@ -226,14 +230,14 @@ def _create_disk_hex_center(radius: int, connected: int = 1) -> None:
 
 def _get_from_disk_cache(radius: int, connected: int = 1) -> np.ndarray:
     if radius not in _disk_cache:
-        if opts.mode == 'sq_center':
+        if opts.disk_mode== 'sq_center':
             _create_disk_sq_center(radius, connected)
-        elif opts.mode == 'sq_border':
+        elif opts.disk_mode == 'sq_border':
             _create_disk_sq_border(radius, connected)
-        elif opts.mode == 'hex_center':
+        elif opts.disk_mode == 'hex_center':
             _create_disk_hex_center(radius, connected)
         else:
-            raise ValueError(f'Not supported disk mode: {opts.mode}')
+            raise ValueError(f'Not supported disk mode: {opts.disk_mode}')
     
     return _disk_cache[radius][connected]
 
@@ -241,8 +245,33 @@ def _get_from_disk_cache(radius: int, connected: int = 1) -> np.ndarray:
 class Coordinate:
     x: int
     y: int
-    mode: np.uint8
+    mode: np.uint8 # MODE_O, MODE_B, MODE_I, MODE_U, MODE_X
 
+    def get_real_x(self) -> float:
+        if get_disk_mode() == 'hex_center':
+            return self.x * SQRT3 / 2
+        else:
+            return self.x
+        
+    def get_real_y(self) -> float:
+        if get_disk_mode() == 'hex_center':
+            return self.y / 2
+        else:
+            return self.y
+        
+    def distance_squared(self, other: "Coordinate") -> int:
+        dx = self.x - other.x
+        dy = self.y - other.y
+
+        dxs = dx * dx
+        dys = dy * dy
+
+        if get_disk_mode() == 'hex_center':
+            dxs = (3 * dxs) // 4
+            dys = dys // 4
+        
+        return dxs + dys  # always integer, for even [3*(2*a^2)+(2*b^2)]/4, for odd [(3*(2*a-1)^2+(2*b-1)^2]/4 -> 3a^2 - 3a + 3/4 + b^2 - b + 1/4 = ... +1
+        
 class DiscreteDisk:
     __slots__ = ('data', 'rest', 'x', 'y', '_shared')
     
@@ -273,7 +302,7 @@ class DiscreteDisk:
     def disk(cls, radius: int = 4, x: int = 0, y: int = 0, connected: int = 1) -> "DiscreteDisk":
         M = _get_from_disk_cache(radius, connected)
 
-        if opts.mode == 'hex_center':
+        if opts.disk_mode == 'hex_center':
             x_shift = x - _hex_x_range(radius)
             y_shift = y - 2 * radius
         else:
@@ -402,7 +431,7 @@ class DiscreteDisk:
         return self
 
     def is_all_points_O(self) -> bool:
-        """Check if all points are set to the outer mode."""
+        """Check if all points are set to the outer or unused area mode."""
         return np.all((self.data == MODE_O) | (self.data == MODE_X))
         return np.all(self.data == MODE_O)
     
@@ -450,8 +479,8 @@ class DiscreteDisk:
         return ax
     
     def normalize(self) -> "DiscreteDisk":
-        """Normalize the disk, for hex mode fix area by setting unused cells for odd x+y"""
-        if opts.mode == 'hex_center':
+        """Normalize the disk, for hex disk mode fix area by setting unused cells for odd x+y"""
+        if opts.disk_mode == 'hex_center':
             h, w = self.data.shape
             for iy in range(h):
                 for ix in range(w):

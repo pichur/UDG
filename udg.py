@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import discrete_disk
 from ug import GraphUtil
-from discrete_disk import create_area_by_join, DiscreteDisk, Coordinate, MODES, MODE_U, MODE_I, MODE_B, MODE_O, set_mode
+from discrete_disk import create_area_by_join, DiscreteDisk, Coordinate, MODES, MODE_U, MODE_I, MODE_B, MODE_O, set_disk_mode, get_disk_mode
 from dataclasses import dataclass
 
 
@@ -195,9 +195,7 @@ class Graph:
     
     def vertex_distance_squared(self, u: int, v: int) -> int:
         """Return squared Euclidean distance between vertices ``u`` and ``v``."""
-        dx = self.coordinates[u].x - self.coordinates[v].x
-        dy = self.coordinates[u].y - self.coordinates[v].y
-        return dx * dx + dy * dy
+        return self.coordinates[u].distance_squared(self.coordinates[v])
     
     def vertex_distance(self, u: int, v: int) -> float:
         """Return Euclidean distance between vertices ``u`` and ``v``."""
@@ -357,19 +355,19 @@ class Graph:
         for u in range(self.n):
             for v in self.adj[u]:
                 if u < v:  # avoid drawing twice
-                    x_values = [self.coordinates[u].x, self.coordinates[v].x]
-                    y_values = [self.coordinates[u].y, self.coordinates[v].y]
+                    x_values = [self.coordinates[u].get_real_x(), self.coordinates[v].get_real_x()]
+                    y_values = [self.coordinates[u].get_real_y(), self.coordinates[v].get_real_y()]
                     ax.plot(x_values, y_values, color="black", zorder=1)
 
         # draw vertices
         for i in range(self.n):
-            ax.scatter(self.coordinates[i].x, self.coordinates[i].y,
+            ax.scatter(self.coordinates[i].get_real_x(), self.coordinates[i].get_real_y(),
                        color=colors[i % len(colors)], zorder=2)
 
         if draw_disks:
             for i in range(self.n):
                 circle = plt.Circle(
-                    (self.coordinates[i].x, self.coordinates[i].y),
+                    (self.coordinates[i].get_real_x(), self.coordinates[i].get_real_y()),
                     self.unit,
                     color=colors[i % len(colors)],
                     fill=False,
@@ -528,12 +526,10 @@ class Graph:
             for i in range(self.n):
                 coord = self.coordinates[i]
                 msg += f"{i}:({coord.x:3d},{coord.y:3d}) "
-            print(msg)
+                print(msg)
         for i in range(self.n):
             for j in range(i + 1, self.n):
-                coord_i = self.coordinates[i]
-                coord_j = self.coordinates[j]
-                distance = sqrt((coord_i.x - coord_j.x)**2 + (coord_i.y - coord_j.y)**2)
+                distance = self.vertex_distance(i, j)
                 distanceF = int(np.floor(distance))
                 distanceC = int(np.ceil (distance))
                 if self.vertex_distances[i][j][distanceF] != MODE_I:
@@ -721,7 +717,7 @@ class Graph:
             """ Previous is 0, so coordinate is equal (0,0) """
             area = self.create_area_for_next_vertex_join(0, 0, self.order[0], self.order[1], True)
             if self.limit_points:
-                P = [p for p in area.points_list(types = ('I' if only_I else 'IB')) if p.y == 0 and p.x >= 0]
+                P = [p for p in area.points_list(types = ('I' if only_I else 'IB')) if p.y == 0 and p.x >= 0] # for hex only y axis is unit one
             else:
                 P = [p for p in area.points_list(types = ('I' if only_I else 'IB')) if p.y >= 0 and p.x >= 0]
 
@@ -1029,7 +1025,7 @@ def main() -> None:
         DiscreteDisk.allow_same_positions = False
     
     # Set discrete disk mode
-    set_mode(args.discrete_mode)
+    set_disk_mode(args.discrete_mode)
 
     if args.file:
         with open(args.graph, 'r') as f:

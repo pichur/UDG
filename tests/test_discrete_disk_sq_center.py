@@ -13,13 +13,13 @@ class TestDiscreteDiskSqCenter(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Set up sq_center mode before running tests."""
-        cls.original_mode = discrete_disk.opts.mode
-        discrete_disk.set_mode('sq_center')
+        cls.original_disk_mode = discrete_disk.opts.disk_mode
+        discrete_disk.set_disk_mode('sq_center')
 
     @classmethod
     def tearDownClass(cls):
         """Restore original mode after running tests."""
-        discrete_disk.set_mode(cls.original_mode)
+        discrete_disk.set_disk_mode(cls.original_disk_mode)
 
     def assertDDDEq(self, d : DiscreteDisk, content: str) :
         actual = d.show(TEST_SHOW)
