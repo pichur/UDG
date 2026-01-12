@@ -745,7 +745,8 @@ class Graph:
         
         for k in range(i+1, j):
             coord_v_order_k = self.coordinates[self.order[k]]
-            area = self.create_area_for_next_vertex_join(coord_v_order_k.x, coord_v_order_k.y, self.order[j], self.order[k])
+            # For first iteration area have to limit points in distance range - so force_limit_negative_distance set to true
+            area = self.create_area_for_next_vertex_join(coord_v_order_k.x, coord_v_order_k.y, self.order[j], self.order[k], k == 0)
             if k > 0:
                 prev_area = self.previous_area[j][k-1]
                 area = create_area_by_join(prev_area, area) 

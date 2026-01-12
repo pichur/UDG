@@ -22,8 +22,18 @@
             "program": "udg.py",
             "console": "integratedTerminal",
             "args": [
-                "-e",
-                "4:1,2;2,3;3,4"
+                "-g",
+                "F?F@W",
+                "-u",
+                "8",
+                "-d",
+                "sq_center",
+                "-v",
+                "cew",
+                "-l",
+                "4",
+                "-o",
+                "0,1,2,3,6,5,4"
             ]
         },
         {
