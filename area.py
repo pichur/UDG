@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.patches import Circle
 import numpy as np
-from discrete_disk import DiscreteDisk, create_area_by_join, Coordinate, MODE_I, MODE_B, MODE_O, MODES
+from discrete_disk import DiscreteDisk, create_area_by_join, Coordinate, MODE_I, MODE_B, MODE_O, MODES, set_disk_mode
 
 
 class AreaVisualizerApp:
@@ -20,12 +20,16 @@ class AreaVisualizerApp:
         
         # Initialize variables
         self.unit = 3
+        self.disk_mode = 'sq_border'  # sq_center, sq_border, hex_center
         self.current_area = None
         self.disk_list = []
         self.colors = ['red', 'blue', 'green', 'orange', 'purple', 'brown', 'pink', 'gray']
         
         self.setup_ui()
         self.update_visualization()
+        
+        # Set initial discrete disk mode
+        set_disk_mode(self.disk_mode)
     
     def on_closing(self):
         """Handle window closing event."""
@@ -102,6 +106,18 @@ class AreaVisualizerApp:
         ttk.Radiobutton(type_frame, text="Disconnected", variable=self.disk_type_var, 
                        value="disconnected").pack(anchor=tk.W)
         
+        # Discrete disk mode selection
+        mode_frame = ttk.LabelFrame(parent, text="Discrete Disk Mode", padding=10)
+        mode_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        self.disk_mode_var = tk.StringVar(value=self.disk_mode)
+        ttk.Radiobutton(mode_frame, text="Square Border", variable=self.disk_mode_var,
+                       value="sq_border", command=self.on_mode_changed).pack(anchor=tk.W)
+        ttk.Radiobutton(mode_frame, text="Square Center", variable=self.disk_mode_var,
+                       value="sq_center", command=self.on_mode_changed).pack(anchor=tk.W)
+        ttk.Radiobutton(mode_frame, text="Hexagonal Center", variable=self.disk_mode_var,
+                       value="hex_center", command=self.on_mode_changed).pack(anchor=tk.W)
+        
         # Manual position entry
         pos_frame = ttk.LabelFrame(parent, text="Add Disk at Position", padding=10)
         pos_frame.pack(fill=tk.X, pady=(0, 10))
@@ -164,14 +180,32 @@ class AreaVisualizerApp:
         self.recalculate_area()
         self.update_visualization()
     
+    def on_mode_changed(self):
+        """Handle discrete disk mode change."""
+        new_mode = self.disk_mode_var.get()
+        if new_mode != self.disk_mode:
+            self.disk_mode = new_mode
+            set_disk_mode(self.disk_mode)
+            self.recalculate_area()
+            self.update_visualization()
+    
     def on_canvas_click(self, event):
         """Handle canvas click to add disk."""
         if event.inaxes != self.ax:
             return
         
-        x = int(round(event.xdata))
-        y = int(round(event.ydata))
-        self.add_disk(x, y, self.disk_type_var.get() == "connected")
+        # Convert real coordinates back to discrete coordinates
+        if self.disk_mode == 'hex_center':
+            from discrete_disk import SQRT3
+            # For hex_center mode: real_x = x * SQRT3/2, real_y = y/2
+            # So: x = real_x * 2/SQRT3, y = real_y * 2
+            discrete_x = int(round(event.xdata * 2 / SQRT3))
+            discrete_y = int(round(event.ydata * 2))
+        else:
+            discrete_x = int(round(event.xdata))
+            discrete_y = int(round(event.ydata))
+            
+        self.add_disk(discrete_x, discrete_y, self.disk_type_var.get() == "connected")
     
     def add_disk_manual(self):
         """Add disk using manual position entry."""
@@ -240,12 +274,23 @@ class AreaVisualizerApp:
             alpha = 0.3
             linestyle = '-' if disk_info['connected'] else '--'
             
-            circle = Circle((disk_info['x'], disk_info['y']), self.unit, 
+            # Use real coordinates for display
+            real_x = disk_info['x']
+            real_y = disk_info['y']
+            real_radius = self.unit
+            
+            # Apply scaling for hex_center mode
+            if self.disk_mode == 'hex_center':
+                from discrete_disk import SQRT3
+                real_x = disk_info['x'] * SQRT3 / 2
+                real_y = disk_info['y'] / 2
+            
+            circle = Circle((real_x, real_y), real_radius, 
                           color=color, alpha=alpha, linestyle=linestyle, fill=False, linewidth=2)
             self.ax.add_patch(circle)
             
-            # Add label
-            self.ax.text(disk_info['x'], disk_info['y'], str(i+1), 
+            # Add label at real coordinates
+            self.ax.text(real_x, real_y, str(i+1), 
                         ha='center', va='center', fontsize=10, fontweight='bold')
         
         # Draw result area points if available
@@ -266,14 +311,18 @@ class AreaVisualizerApp:
         # Get Interior points
         try:
             for point in self.current_area.points_list(types='I'):
-                points_I.append((point.x, point.y))
+                real_x = point.get_real_x()
+                real_y = point.get_real_y()
+                points_I.append((real_x, real_y))
         except:
             pass
             
         # Get Boundary points  
         try:
             for point in self.current_area.points_list(types='B'):
-                points_B.append((point.x, point.y))
+                real_x = point.get_real_x()
+                real_y = point.get_real_y()
+                points_B.append((real_x, real_y))
         except:
             pass
         
@@ -312,6 +361,7 @@ class AreaVisualizerApp:
         
         info_text = f"Disks: {len(self.disk_list)}\n"
         info_text += f"Unit radius: {self.unit}\n"
+        info_text += f"Mode: {self.disk_mode}\n"
         info_text += f"Interior points: {count_I}\n"
         info_text += f"Boundary points: {count_B}\n"
         info_text += f"Total points: {count_I + count_B}"
@@ -367,7 +417,9 @@ class AreaVisualizerApp:
             if points_I:
                 text_widget.insert(tk.END, f"Interior Points ({len(points_I)}): \n")
                 for point in sorted(points_I, key=lambda p: (p.y, p.x)):
-                    text_widget.insert(tk.END, f"  ({point.x:3d}, {point.y:3d})\n")
+                    real_x = point.get_real_x()
+                    real_y = point.get_real_y()
+                    text_widget.insert(tk.END, f"  ({point.x:3d}, {point.y:3d}) -> ({real_x:6.2f}, {real_y:6.2f})\n")
                 text_widget.insert(tk.END, "\n")
         except:
             pass
@@ -378,7 +430,9 @@ class AreaVisualizerApp:
             if points_B:
                 text_widget.insert(tk.END, f"Boundary Points ({len(points_B)}): \n")
                 for point in sorted(points_B, key=lambda p: (p.y, p.x)):
-                    text_widget.insert(tk.END, f"  ({point.x:3d}, {point.y:3d})\n")
+                    real_x = point.get_real_x()
+                    real_y = point.get_real_y()
+                    text_widget.insert(tk.END, f"  ({point.x:3d}, {point.y:3d}) -> ({real_x:6.2f}, {real_y:6.2f})\n")
                 text_widget.insert(tk.END, "\n")
         except:
             pass
