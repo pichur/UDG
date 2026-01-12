@@ -148,13 +148,15 @@ class AreaVisualizerApp:
         list_frame.pack(fill=tk.BOTH, expand=True)
         
         # Create treeview for disk list
-        self.disk_tree = ttk.Treeview(list_frame, columns=('X', 'Y', 'Type'), show='headings', height=8)
+        self.disk_tree = ttk.Treeview(list_frame, columns=('X', 'Y', 'Unit', 'Type'), show='headings', height=8)
         self.disk_tree.heading('#1', text='X')
         self.disk_tree.heading('#2', text='Y')
-        self.disk_tree.heading('#3', text='Type')
+        self.disk_tree.heading('#3', text='Unit')
+        self.disk_tree.heading('#4', text='Type')
         self.disk_tree.column('#1', width=40)
         self.disk_tree.column('#2', width=40)
-        self.disk_tree.column('#3', width=80)
+        self.disk_tree.column('#3', width=40)
+        self.disk_tree.column('#4', width=80)
         
         # Add scrollbar
         tree_scroll = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.disk_tree.yview)
@@ -221,6 +223,7 @@ class AreaVisualizerApp:
         disk_info = {
             'x': x,
             'y': y,
+            'unit': self.unit,  # Remember the size of each disk
             'connected': connected,
             'disk': DiscreteDisk.disk(self.unit, x, y, connected = 1 if connected else 0)
         }
@@ -237,14 +240,15 @@ class AreaVisualizerApp:
             self.current_area = None
             return
         
-        # Start with the first disk
-        self.current_area = DiscreteDisk.disk(self.unit, self.disk_list[0]['x'], 
-                                            self.disk_list[0]['y'], 
-                                            connected=1 if self.disk_list[0]['connected'] else 0)
+        # Start with the first disk using its remembered size
+        first_disk = self.disk_list[0]
+        self.current_area = DiscreteDisk.disk(first_disk['unit'], first_disk['x'], 
+                                            first_disk['y'], 
+                                            connected=1 if first_disk['connected'] else 0)
         
-        # Join with subsequent disks
+        # Join with subsequent disks using their remembered sizes
         for disk_info in self.disk_list[1:]:
-            disk = DiscreteDisk.disk(self.unit, disk_info['x'], disk_info['y'], 
+            disk = DiscreteDisk.disk(disk_info['unit'], disk_info['x'], disk_info['y'], 
                                    connected=1 if disk_info['connected'] else 0)
             self.current_area = create_area_by_join(self.current_area, disk)
     
@@ -257,7 +261,8 @@ class AreaVisualizerApp:
         # Add current disks
         for i, disk_info in enumerate(self.disk_list):
             disk_type = "Connected" if disk_info['connected'] else "Disconnected"
-            self.disk_tree.insert('', 'end', values=(disk_info['x'], disk_info['y'], disk_type))
+            unit = disk_info.get('unit', self.unit)  # Fallback to current unit if not stored
+            self.disk_tree.insert('', 'end', values=(disk_info['x'], disk_info['y'], unit, disk_type))
     
     def update_visualization(self):
         """Update the matplotlib visualization."""
@@ -277,7 +282,8 @@ class AreaVisualizerApp:
             # Use real coordinates for display
             real_x = disk_info['x']
             real_y = disk_info['y']
-            real_radius = self.unit
+            disk_unit = disk_info.get('unit', self.unit)  # Use stored unit size
+            real_radius = disk_unit
             
             # Apply scaling for hex_center mode
             if self.disk_mode == 'hex_center':
