@@ -45,6 +45,7 @@ class Graph:
     level: int = 0
     unit: int
     max_unit: int = 0
+    unit_increase: str = "*1.4"
     n: int
     adj: list[list[int]]
 
@@ -412,17 +413,35 @@ class Graph:
             if result == NO:
                 self.stop_time = time.time()
                 return False
+
             if self.is_limit_achieved():
                 self.stop_time = time.time()
                 if self.log_level >= LOG_BASIC:
-                    print("Reached max unit = {self.unit}, no realization found.")
+                    print(f"Reached max unit = {self.unit}, no realization found.")
                 return False
-
+            
             self.refine_granularity()
             self.level += 1
     
     def refine_granularity(self):
-        self.set_unit(max(self.unit + 1, int(np.ceil(self.unit * 1.4))))
+        new_unit = self.unit
+        increase = self.unit_increase
+        if increase.startswith('+'):
+            try:
+                new_unit += int(increase[1:])
+            except ValueError:
+                new_unit += 1
+        elif increase.startswith('*'):
+            try:
+                new_unit = int(np.ceil(self.unit * float(increase[1:])))
+            except ValueError:
+                 new_unit = int(np.ceil(self.unit * 1.4))
+        else:
+            try:
+                new_unit = int(np.ceil(self.unit * float(increase)))
+            except ValueError:
+                 new_unit = int(np.ceil(self.unit * 1.4))
+        self.set_unit(max(self.unit + 1, new_unit))
 
     def is_connected(self):
         """Check if the graph is connected using a simple BFS."""
@@ -447,12 +466,12 @@ class Graph:
 
     def is_limit_achieved(self):
         if self.max_unit > 0:
-            if self.unit > self.max_unit:
+            if self.unit >= self.max_unit: # on processing end so with '='
                 if self.log_level >= LOG_BASIC:
                     print(f"Reached maximum unit limit: {self.max_unit}")
                 return True
         # temp
-        if self.unit > 2**self.n:
+        if self.unit >= 2**self.n: # on processing end so with '='
             if self.log_level >= LOG_BASIC:
                 print(f"Reached theoretical unit limit: {2**self.n}")
             return True
@@ -925,7 +944,7 @@ def write_out(output_file, msg_info):
 def main() -> None:
     import graph_examples
     # abcdefghijklmnopqrstuvwxyz
-    # -b-d----ij------qr-------z
+    # -b-d-----j------qr-------z
     parser = argparse.ArgumentParser(
         description="Check if a graph is a Unit Disk Graph (UDG).")
     # main
@@ -951,6 +970,9 @@ def main() -> None:
     parser.add_argument(
         "-u", "--unit", type=int, default=4,
         help="Start unit")
+    parser.add_argument(
+        "-i", "--unit_increase", type=str, default="*1.4",
+        help="Way of unit increase: +N (add N), *N (multiply by N); default *1.4")
     parser.add_argument(
         "-x", "--max_unit", type=int, default=0,
         help="Maximum unit, 0 for real max limit")
@@ -1086,6 +1108,7 @@ def main() -> None:
                 g.set_unit(args.unit)
 
             g.max_unit = args.max_unit
+            g.unit_increase = args.unit_increase
 
             g.order_mode = node_order
             
