@@ -89,7 +89,7 @@ class AreaVisualizerApp:
         unit_frame.pack(fill=tk.X, pady=(0, 10))
         
         self.unit_var = tk.IntVar(value=self.unit)
-        unit_scale = ttk.Scale(unit_frame, from_=1, to=10, variable=self.unit_var, 
+        unit_scale = ttk.Scale(unit_frame, from_=1, to=32, variable=self.unit_var, 
                               orient=tk.HORIZONTAL, command=self.on_unit_changed)
         unit_scale.pack(fill=tk.X)
         

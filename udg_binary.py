@@ -52,7 +52,8 @@ class Graph:
     order: list[int]
     coordinates: list[Coordinate]
 
-    previous_area: list[list[DiscreteDisk]]
+    # Previous areas, first by vertex second by order index
+    prev_area_by_v_o: list[list[DiscreteDisk]]
 
     iterations: list[IterationInfo]
 
@@ -106,8 +107,8 @@ class Graph:
         ]
 
         # set to real values during processing
-        # indexing by permuted work order
-        self.previous_area = [[DISK_NONE for _ in range(self.n)] for _ in range(self.n)]
+        # indexing first by vertex second by order index
+        self.prev_area_by_v_o = [[DISK_NONE for _ in range(self.n)] for _ in range(self.n)]
 
         self.order = range(self.n)
 
@@ -161,7 +162,7 @@ class Graph:
     
     def clear_previous_area(self, order_index: int):
         fill = [DISK_NONE] * (self.n - order_index)
-        for row in self.previous_area:
+        for row in self.prev_area_by_v_o:
             row[order_index:] = fill
 
     def set_iteration_len(self, v: int, len: int):
@@ -694,16 +695,16 @@ class Graph:
             return P
 
         i = j - 2
-        while i >= 0 and self.previous_area[j][i] is DISK_NONE:
+        while i >= 0 and self.prev_area_by_v_o[self.order[j]][i] is DISK_NONE:
             i -= 1
 
         for k in range(i+1, j):
             coord_v_order_k = self.coordinates[self.order[k]]
             area = self.create_area_for_next_vertex_join(coord_v_order_k.x, coord_v_order_k.y, self.order[j], self.order[k])
             if k > 0:
-                prev_area = self.previous_area[j][k-1]
+                prev_area = self.prev_area_by_v_o[self.order[j]][k-1]
                 area = create_area_by_join(prev_area, area) 
-            self.previous_area[j][k] = area
+            self.prev_area_by_v_o[self.order[j]][k] = area
 
         """For limit points return only positive y coordinates for second vertex"""
         if j == 2:

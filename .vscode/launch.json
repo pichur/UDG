@@ -37,6 +37,23 @@
             ]
         },
         {
+            "name": "udg-auto",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "udg.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-g",
+                "GUzvvk",
+                "-u",
+                "10",
+                "-d",
+                "sq_center",
+                "-o",
+                "P_auto"
+            ]
+        },
+        {
             "name": "udg-long",
             "type": "debugpy",
             "request": "launch",

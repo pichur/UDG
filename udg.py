@@ -55,7 +55,8 @@ class Graph:
     order: list[int]
     coordinates: list[Coordinate]
 
-    previous_area: list[list[any]]
+    # Previous areas, first by vertex second by order index
+    prev_area_by_v_o: list[list[any]]
 
     iterations: list[IterationInfo]
 
@@ -96,8 +97,8 @@ class Graph:
         ]
 
         # set to real values during processing
-        # indexing by permuted work order
-        self.previous_area = [[False for _ in range(self.n)] for _ in range(self.n)]
+        # indexing first by vertex second by order index
+        self.prev_area_by_v_o = [[False for _ in range(self.n)] for _ in range(self.n)]
 
         self.order = range(self.n)
 
@@ -178,7 +179,7 @@ class Graph:
         return self
     
     def clear_previous_area(self, order_index: int):
-        for row in self.previous_area: row[order_index] = False
+        for row in self.prev_area_by_v_o: row[order_index] = False
 
     def set_iteration_len(self, v: int, len: int):
         c = self.iterations[v].point_size = len
@@ -584,8 +585,8 @@ class Graph:
             self.order[j] = v
             
             # Get candidate points for this vertex
-            P = self.candidate_points(j, only_I, count_I, count_B)
-            num_candidates = len(P)
+            curr_P = self.candidate_points(j, only_I, count_I, count_B)
+            num_candidates = len(curr_P)
             
             if self.log_level > LOG_TRACE:
                 print(f"  check order {j}={v} : {num_candidates}")
@@ -594,14 +595,13 @@ class Graph:
             if num_candidates < min_candidates:
                 min_candidates = num_candidates
                 best_vertex = v
-                best_P = P
-
+                best_P = curr_P
         # Set the best vertex at position j and use its candidate points
         self.order[j] = best_vertex
-        P = best_P
+        return best_P
 
     def place_next_vertex(self, j: int, calc_D: bool, only_I: bool, count_I: int, count_B: int):
-        if self.order[j] == -1:
+        if (j > 1) and self.order_mode.__contains__('auto'): # automatic order by checking min number of allowed points, first two should always be set ('auto' mode has no sense alone)
             P = self.minimize_coordinates(j, only_I, count_I, count_B)
         else:
             P = self.candidate_points(j, only_I, count_I, count_B)
@@ -759,7 +759,7 @@ class Graph:
             return P
 
         i = j - 2
-        while i >= 0 and self.previous_area[j][i] is False:
+        while i >= 0 and self.prev_area_by_v_o[self.order[j]][i] is False:
             i -= 1
         
         for k in range(i+1, j):
@@ -767,9 +767,9 @@ class Graph:
             # For first iteration area have to limit points in distance range - so force_limit_negative_distance set to true
             area = self.create_area_for_next_vertex_join(coord_v_order_k.x, coord_v_order_k.y, self.order[j], self.order[k], k == 0)
             if k > 0:
-                prev_area = self.previous_area[j][k-1]
+                prev_area = self.prev_area_by_v_o[self.order[j]][k-1]
                 area = create_area_by_join(prev_area, area) 
-            self.previous_area[j][k] = area
+            self.prev_area_by_v_o[self.order[j]][k] = area
 
         """For limit points return only positive y coordinates for second vertex"""
         if j == 2:
@@ -983,7 +983,8 @@ def main() -> None:
                          "DA:degree ascending;" \
                          "DD:degree descending;" \
                          "v1,...,vn:custom order - starting from digit;" \
-                         "ALL - iterate over all permutations;" \
+                         "auto:automatic order by checking min number of allowed points, work as suffix (e.g. DD_auto), first two has to be set;" \
+                         "ALL:iterate over all permutations;" \
                          "other:same order); default DD")
     # settings
     parser.add_argument(
