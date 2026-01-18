@@ -25,6 +25,15 @@ def run_c():
     g.set_unit(9)
     g.udg_recognition()
 
+def run_d():
+    # py udg.py -g GUzvvk -u 10 -d sq_center -o "P"
+    discrete_disk.set_disk_mode('sq_center')
+    nxg = Graph6Converter.g6_to_graph('GUzvvk')
+    g = udg.Graph(nxg)
+    g.set_unit(10)
+    g.order_mode = 'P'
+    g.udg_recognition()
+
 def print_stats_over(lp: LineProfiler, limit: float = 0.1, *, stream=None):
     """
     Wypisz wynik line-profilera pomijając funkcje,
@@ -61,5 +70,5 @@ if __name__ == "__main__":
     lp = LineProfiler()
     lp.add_module(discrete_disk)
     lp.add_module(udg)
-    lp(run_c)()
+    lp(run_d)()
     print_stats_over(lp, limit=0.1)
