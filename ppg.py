@@ -1,6 +1,36 @@
 import argparse
 import Graph6Converter
+import networkx as nx
+from networkx.algorithms.isomorphism import GraphMatcher
 from ug import GraphUtil
+
+
+def get_vertex_orbits(g):
+    """
+    Get vertex orbits using NetworkX automorphisms.
+    Returns a list of sets, where each set contains vertices in the same orbit.
+    """
+    # Get all automorphisms
+    autos = list(GraphMatcher(g, g).isomorphisms_iter())
+    
+    vertices = list(g.nodes())
+    seen = set()
+    orbits = []
+    
+    for vertex in vertices:
+        if vertex in seen:
+            continue
+            
+        # Find orbit of this vertex
+        orbit = set()
+        for auto in autos:
+            orbit.add(auto[vertex])
+        
+        orbits.append(orbit)
+        seen.update(orbit)
+    
+    return orbits
+
 
 def process_graph_file(input_file: str, output_file: str) -> None:
     """
@@ -10,6 +40,16 @@ def process_graph_file(input_file: str, output_file: str) -> None:
         input_file: Path to input file with one g6 graph per line
         output_file: Path to output file with formatted results
     """
+
+    graph_K23 = nx.Graph()
+    graph_K23.add_edges_from([
+        (0, 2), (0, 3), (0, 4),
+        (1, 2), (1, 3), (1, 4)  
+    ])
+
+    graph_S6 = nx.Graph()
+    graph_S6.add_edges_from([(0, 1), (0, 2), (0, 3), (0, 4), (0, 5), (0, 6)])
+
     with open(input_file, 'r') as f_in, open(output_file, 'w') as f_out:
         # Write header
         f_out.write(f"{'Input':>10} {'Canonical':>10} {'Reduced':>10}\n")
@@ -48,10 +88,14 @@ def process_graph_file(input_file: str, output_file: str) -> None:
                 
                 marker += '-'
 
+                # Get vertex orbits
+                orbits = get_vertex_orbits(g)
+                orbit_str = ",".join(f"({','.join(map(str, sorted(orbit)))})" for orbit in sorted(orbits, key=lambda x: min(x)))
+
                 # Get edges from the graph
                 edges = list(Graph6Converter.g6_to_graph(canonical_g6).edges())
                 
-                f_out.write(f"{line:>10} {canonical_g6:>10} {reduced_g6:>10} {marker} {edges}\n")
+                f_out.write(f"{line:>10} {canonical_g6:>10} {reduced_g6:>10} {marker} {len(orbits)} {orbit_str:<20} {edges}\n")
                 
             except Exception as e:
                 print(f"Error processing line {line_num}: '{line}' - {e}")
