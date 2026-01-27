@@ -67,6 +67,24 @@
             ]
         },
         {
+            "name": "udg-z",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "udg.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-z",
+                "-u",
+                "5",
+                "-x",
+                "5",
+                "-g",
+                "FCpfO",
+                "-l",
+                "4",
+            ]
+        },
+        {
             "name": "udg-g5",
             "type": "debugpy",
             "request": "launch",

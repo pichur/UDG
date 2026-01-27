@@ -40,6 +40,7 @@ class Graph:
     limit_points:bool = True
     limit_negative_distances: bool = False
     optimize_for_yes: bool = False
+    not_optimize_for_inner: bool = False
     forbid_same_positions: bool = False
 
     level: int = 0
@@ -480,7 +481,13 @@ class Graph:
         return False
 
     def has_discrete_realization(self):
-        range_modes = [True] if self.optimize_for_yes else [True, False]
+        if self.not_optimize_for_inner:
+            range_modes = [False]
+        elif self.optimize_for_yes:
+            range_modes = [True]
+        else:
+            range_modes = [True, False]
+
         for only_I in range_modes:
             if self.log_level >= LOG_INFO:
                 print(f"  {'Inner' if only_I else 'All'}")
@@ -613,7 +620,7 @@ class Graph:
 
         found_trigraph = False
 
-        if self.print_progress > 0:
+        if (self.print_progress > 0) or self.log_level >= LOG_DEBUG:
             self.set_iteration_len(vertex, len(P))
         
         iter_p = -1
@@ -636,7 +643,7 @@ class Graph:
                 if time.time() - self.last_verbose_time > 10:
                     self.last_verbose_time = time.time()
                     print("  placing " + self.state_info(only_I, j))
-            if (self.log_level >= LOG_DEBUG) or (self.log_level == LOG_WORK_ORDER):
+            if (self.log_level >= LOG_TRACE) or (self.log_level == LOG_WORK_ORDER):
                 print(f"vertex = {self.order[j]} already_placed = {j} coordinates = {self.print_coordinates(j)}")
             if j < self.n - 1:
                 result = self.place_next_vertex(j + 1, calc_D, only_I, count_I + incr_I, count_B + incr_B)
@@ -644,14 +651,15 @@ class Graph:
                     return YES
                 if result == TRIGRAPH:
                     if not only_I:
-                        return TRIGRAPH
+                        if not self.not_optimize_for_inner:
+                            return TRIGRAPH
                     if not calc_D:
                         found_trigraph=True
                 if not only_I and (result == NO):
                     if self.log_level >= LOG_DEBUG:
-                        if j < 4:
+                        if j < 5:
                             print(f" unit={self.unit} level={j} forbidden at {self.state_info(only_I, j)}")
-                    elif self.log_level >= LOG_TRACE:
+                    if self.log_level >= LOG_TRACE:
                         print(f" unit={self.unit} level={j} forbidden at {self.state_info(only_I, j)}")
             else:
                 # if self.is_udg_realization():
@@ -666,7 +674,8 @@ class Graph:
                         self.store_vertex_distances(MODE_B)
                         self.result_B += 1
                     else:
-                        return TRIGRAPH
+                        if not self.not_optimize_for_inner:
+                            return TRIGRAPH
                 if not calc_D:
                     found_trigraph = True
         
@@ -694,7 +703,7 @@ class Graph:
         return "[" + ",".join(coords) + "]"
     
     def state_info(self, only_I: bool, j:int) -> str:
-        info = f" {'I' if only_I else 'A'}"
+        info = f" ({'I' if only_I else 'A'}) "
         for i in range(j+1):
             k = self.order[i]
             c = self.coordinates[k]
@@ -944,7 +953,7 @@ def write_out(output_file, msg_info):
 def main() -> None:
     import graph_examples
     # abcdefghijklmnopqrstuvwxyz
-    # -b-d-----j------qr-------z
+    # -b-d-----j------qr--------
     parser = argparse.ArgumentParser(
         description="Check if a graph is a Unit Disk Graph (UDG).")
     # main
@@ -996,6 +1005,9 @@ def main() -> None:
     parser.add_argument(
         "-y", "--optimize_for_yes", action="store_true",
         help="Check only for UDG realization, not for missing trigraphs, stop by limit only")
+    parser.add_argument(
+        "-z", "--not_optimize_for_inner", action="store_true",
+        help="Not optimize by separate look for Inner first")
     parser.add_argument(
         "-k", "--point_iteration_order", type=str, default="none",
         help="Point iteration order: none (default), ascending, descending, distance_ascending, distance_descending")
@@ -1085,10 +1097,26 @@ def main() -> None:
             check = True
 
         node_orders = []
-        if args.order == "ALL":
+        if args.order.startswith("ALL"):
             from itertools import permutations
             vertices = list(range(g.n))
             all_permutations = list(permutations(vertices))
+            
+            # Check if there's a start order specified after ALL_
+            if args.order.startswith("ALL_"):
+                start_order_str = args.order[4:]  # Remove "ALL_" prefix
+            try:
+                start_order = [int(x.strip()) for x in start_order_str.split(',')]
+                # Find the starting permutation and skip to it
+                start_tuple = tuple(start_order)
+                try:
+                    start_index = all_permutations.index(start_tuple)
+                    all_permutations = all_permutations[start_index:]
+                except ValueError:
+                    print(f"Warning: Start order {start_order} not found in permutations, starting from beginning")
+            except (ValueError, IndexError):
+                print(f"Warning: Invalid start order format '{start_order_str}', starting from beginning")
+            
             for perm in all_permutations:
                 node_orders.append(','.join(str(vertex) for vertex in perm))
         else:
@@ -1120,6 +1148,7 @@ def main() -> None:
             if args.not_limit_points        : g.limit_points             = False
             if args.limit_negative_distances: g.limit_negative_distances = True
             if args.optimize_for_yes        : g.optimize_for_yes         = True
+            if args.not_optimize_for_inner  : g.not_optimize_for_inner   = True
 
             msg_info = ""
             if len(graphs_input) > 1:
