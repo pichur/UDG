@@ -4,6 +4,7 @@ from networkx import to_graph6_bytes
 import Graph6Converter
 import numpy as np
 import igraph as ig
+from itertools import permutations
 
 class GraphUtil:
     """
@@ -70,6 +71,54 @@ class GraphUtil:
             'degree_sequence': sorted([d for n, d in graph.degree()], reverse=True)
         }
     
+    @classmethod
+    def display_vertex_order_permutations(cls, graph):
+        """
+        Display all increasing permutations of vertex order with connections 
+        between consecutive vertices.
+        
+        Args:
+            graph (nx.Graph): The graph to analyze
+        """
+        vertices = sorted(graph.nodes())
+        n = len(vertices)
+        
+        if n == 0:
+            print("No vertices in graph")
+            return
+            
+        print(f"\n=== All Vertex Order Permutations for {n} vertices ===")
+        
+        # Generate all permutations
+        perms = list(permutations(vertices))
+        
+        for perm in perms:
+            # Format the permutation
+            perm_str = ",".join(map(str, perm))
+            
+            # Generate connection patterns for consecutive groups
+            connection_groups = []
+            
+            # For each position in permutation, check connections to later vertices
+            for i in range(n):
+                connections = ""
+                for j in range(i + 1, n):
+                    vertex_i = perm[i]
+                    vertex_j = perm[j]
+                    
+                    if graph.has_edge(vertex_i, vertex_j):
+                        connections += "E"
+                    else:
+                        connections += "n"
+                
+                if connections:  # Only add if there are connections to check
+                    connection_groups.append(connections)
+            
+            # Join connection groups with ':'
+            connections_str = ":".join(connection_groups)
+            
+            print(f"{perm_str}  {connections_str}")
+
     class ReduceInfo:
         def __init__(self, input_g6:str, input_canonical_g6:str, reduced_nodes:int, output_canonical:nx.Graph, output_canonical_g6:str, vertex_mapping:dict):
             self.input_g6 = input_g6
@@ -175,6 +224,9 @@ def main():
         "-p", "--properties", action="store_true",
         help="Show graph properties")
     parser.add_argument(
+        "-o", "--order", action="store_true",
+        help="Show connections for all vertex orders")
+    parser.add_argument(
         "graph", metavar="GRAPH",
         help="Input graph description")
     
@@ -200,10 +252,14 @@ def main():
             print("\n=== Canonical Representations ===")
             GraphUtil.display_all_representations(Graph6Converter.canonize_graph(g))
 
+        # Show vertex order permutations if requested
+        if args.order:
+            GraphUtil.display_vertex_order_permutations(g)
+
         # Show properties if requested
         if args.properties:
             print("\n=== Graph Properties ===")
-            props = g.get_graph_properties()
+            props = GraphUtil.get_graph_properties(g)
             for key, value in props.items():
                 if key == 'degree_sequence':
                     print(f"{key}: {value}")
